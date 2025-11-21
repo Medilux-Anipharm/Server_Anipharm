@@ -83,8 +83,29 @@ const validateRegister = [
   handleValidationErrors
 ];
 
+// 로그인 검증 규칙
+const validateLogin = [
+  // 이메일 검증
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('이메일을 입력해주세요.')
+    .isEmail()
+    .withMessage('올바른 이메일 형식이 아닙니다.')
+    .normalizeEmail(),
+
+  // 비밀번호 검증
+  body('password')
+    .trim()
+    .notEmpty()
+    .withMessage('비밀번호를 입력해주세요.'),
+
+  handleValidationErrors
+];
+
 module.exports = {
   validateRegister,
+  validateLogin,
   handleValidationErrors
 };
 

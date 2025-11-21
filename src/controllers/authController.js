@@ -42,6 +42,47 @@ class AuthController {
       });
     }
   }
+
+  /**
+   * 로그인
+   * POST /api/auth/login
+   */
+  async login(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      // 서비스를 통한 로그인 처리
+      const { token, user } = await authService.login({
+        email,
+        password
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: '로그인에 성공했습니다.',
+        data: {
+          token,
+          user
+        }
+      });
+    } catch (error) {
+      logger.error('로그인 컨트롤러 에러:', error);
+
+      // 에러 타입에 따른 응답
+      if (error.message.includes('일치하지 않습니다') || error.message.includes('비활성화')) {
+        return res.status(401).json({
+          success: false,
+          message: error.message
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: '로그인 중 오류가 발생했습니다.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 }
 
 module.exports = new AuthController();

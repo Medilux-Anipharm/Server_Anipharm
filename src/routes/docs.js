@@ -43,9 +43,19 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
+          description: 'JWT 토큰 인증 (로그인 후 받은 토큰 입력)',
+        },
+        basicAuth: {
+          type: 'http',
+          scheme: 'basic',
+          description: 'Basic 인증 (Swagger 테스트용 - 이메일/비밀번호 입력)',
         },
       },
     },
+    security: [
+      { bearerAuth: [] },
+      { basicAuth: [] },
+    ],
   },
   apis: ['./src/routes/*.js'], // 라우트 파일에서 주석을 읽어옴
 };
