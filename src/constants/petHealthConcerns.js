@@ -1,0 +1,40 @@
+const HEALTH_CONCERNS = {
+  DENTAL: 'dental',
+  JOINT: 'joint',
+  SKIN: 'skin',
+  EYE: 'eye',
+  KIDNEY: 'kidney',
+  VOMIT: 'vomit',
+  AGING: 'aging',
+  NUTRITION: 'nutrition',
+  HEART: 'heart',
+  OBESITY: 'obesity',
+  CONSTIPATION: 'constipation',
+  IMMUNITY: 'immunity'
+};
+
+const HEALTH_CONCERN_LABELS = {
+  [HEALTH_CONCERNS.DENTAL]: '치아/구강',
+  [HEALTH_CONCERNS.JOINT]: '뼈 관절',
+  [HEALTH_CONCERNS.SKIN]: '피부/미모',
+  [HEALTH_CONCERNS.EYE]: '눈',
+  [HEALTH_CONCERNS.KIDNEY]: '신장/요로',
+  [HEALTH_CONCERNS.VOMIT]: '구토',
+  [HEALTH_CONCERNS.AGING]: '노화',
+  [HEALTH_CONCERNS.NUTRITION]: '영양',
+  [HEALTH_CONCERNS.HEART]: '심장',
+  [HEALTH_CONCERNS.OBESITY]: '비만',
+  [HEALTH_CONCERNS.CONSTIPATION]: '변비',
+  [HEALTH_CONCERNS.IMMUNITY]: '면역력'
+};
+
+const VALID_HEALTH_CONCERNS = Object.values(HEALTH_CONCERNS);
+
+const MAX_HEALTH_CONCERNS = 5;
+
+module.exports = {
+  HEALTH_CONCERNS,
+  HEALTH_CONCERN_LABELS,
+  VALID_HEALTH_CONCERNS,
+  MAX_HEALTH_CONCERNS
+};

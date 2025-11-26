@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(10),
       allowNull: false,
       validate: {
-        isIn: [['dog', 'cat']]
+        isIn: [['강아지', '고양이']]
       }
     },
     breed: {
@@ -41,7 +41,7 @@ module.exports = (sequelize) => {
     },
     birthDate: {
       type: DataTypes.DATEONLY,
-      allowNull: true,
+      allowNull: false,
       field: 'birth_date'
     },
     weight: {
