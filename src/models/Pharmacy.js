@@ -33,30 +33,10 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(11, 8),
       allowNull: false
     },
-    businessHours: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-      field: 'business_hours'
-    },
-    isOpenNow: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-      field: 'is_open_now'
-    },
     isLateNight: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       field: 'is_late_night'
-    },
-    hasParking: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: 'has_parking'
-    },
-    parkingInfo: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      field: 'parking_info'
     },
     ratingAverage: {
       type: DataTypes.DECIMAL(3, 2),
