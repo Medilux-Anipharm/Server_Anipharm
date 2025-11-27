@@ -33,16 +33,6 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(11, 8),
       allowNull: false
     },
-    nearestStation: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-      field: 'nearest_station'
-    },
-    stationDistance: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      field: 'station_distance'
-    },
     businessHours: {
       type: DataTypes.JSONB,
       allowNull: true,
