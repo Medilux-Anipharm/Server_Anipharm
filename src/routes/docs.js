@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 
 // Swagger 패키지가 설치되어 있는지 확인
 let swaggerUi, swaggerJsdoc;
@@ -58,8 +59,8 @@ const options = {
     ],
   },
   apis: [
-    './src/routes/*.js', // 라우트 파일에서 주석을 읽어옴
-    './src/swagger/**/*.js' // Swagger 정의 파일
+    path.join(__dirname, '../routes/*.js'), // 라우트 파일에서 주석을 읽어옴
+    path.join(__dirname, '../swagger/paths/*.js') // Swagger 정의 파일
   ],
 };
 

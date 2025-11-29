@@ -47,67 +47,48 @@
  *         description: 서버 오류
  */
 
+
+
 /**
  * @swagger
  * /api/map/search:
  *   get:
- *     summary: 카테고리별 장소 검색
+ *     summary: 지역 검색
  *     tags: [Map]
- *     description: 카테고리와 옵션에 따라 장소를 검색하고, 좌표가 제공되면 거리순으로 정렬합니다.
  *     parameters:
  *       - in: query
  *         name: category
  *         required: true
- *         schema:
- *           type: string
- *           enum: [hospital, pharmacy, petshop, hotel, grooming]
  *         description: 검색할 카테고리
  *         example: hospital
  *       - in: query
  *         name: region
  *         required: false
- *         schema:
- *           type: string
- *         description: 검색할 지역 (예: "서울", "강남구")
- *         example: "서울"
+ *         description: 검색할 지역
+ *         example: 서울특별시
  *       - in: query
  *         name: latitude
  *         required: false
- *         schema:
- *           type: number
- *           format: float
- *         description: 기준점 위도 (좌표 기반 정렬 시 사용)
+ *         description: 검색할 위도
  *         example: 37.5012
  *       - in: query
  *         name: longitude
  *         required: false
- *         schema:
- *           type: number
- *           format: float
- *         description: 기준점 경도 (좌표 기반 정렬 시 사용)
- *         example: 127.0395
+ *         description: 검색할 경도
+ *         example: 127.0386
  *       - in: query
  *         name: display
  *         required: false
- *         schema:
- *           type: integer
- *           default: 20
- *           minimum: 1
- *           maximum: 100
- *         description: 검색 결과 개수
- *         example: 20
+ *         description: 검색 결과 표시 개수
+ *         example: 10
  *       - in: query
  *         name: start
  *         required: false
- *         schema:
- *           type: integer
- *           default: 1
- *           minimum: 1
- *         description: 검색 시작 위치 (페이지네이션)
+ *         description: 검색 결과 시작 위치
  *         example: 1
  *     responses:
  *       200:
- *         description: 검색 성공
+ *         description: 장소 검색 성공
  *         content:
  *           application/json:
  *             schema:
@@ -117,51 +98,36 @@
  *                 properties:
  *                   id:
  *                     type: string
- *                     description: 장소 고유 ID (링크)
- *                     example: "https://..."
+ *                     example: https://map.naver.com/p/entry/place/1234567890
  *                   name:
  *                     type: string
- *                     description: 장소명
- *                     example: "강남동물병원"
+ *                     example: 서울특별시 강남구 테헤란로 152
  *                   category:
  *                     type: string
- *                     description: 카테고리
- *                     example: "동물병원"
+ *                     example: 병원
  *                   address:
- *                     type: string
- *                     description: 주소
- *                     example: "서울특별시 강남구..."
+ *                     type: string     
+ *                     example: 서울특별시 강남구 테헤란로 152
  *                   roadAddress:
  *                     type: string
- *                     description: 도로명 주소
- *                     example: "서울특별시 강남구 테헤란로..."
+ *                     example: 서울특별시 강남구 테헤란로 152
  *                   telephone:
  *                     type: string
- *                     description: 전화번호
- *                     example: "02-1234-5678"
+ *                     example: 02-1234-5678
  *                   latitude:
  *                     type: number
- *                     format: float
- *                     nullable: true
- *                     description: 위도
  *                     example: 37.5012
  *                   longitude:
  *                     type: number
- *                     format: float
- *                     nullable: true
- *                     description: 경도
- *                     example: 127.0395
+ *                     example: 127.0386
  *                   description:
  *                     type: string
- *                     description: 장소 설명
- *                     example: "24시간 진료 가능"
+ *                     example: 24시간 진료 가능
  *                   link:
  *                     type: string
- *                     description: 상세 정보 링크
- *                     example: "https://..."
+ *                     example: https://map.naver.com/p/entry/place/1234567890
  *       400:
  *         description: 잘못된 요청 (카테고리 파라미터 누락 또는 지원하지 않는 카테고리)
  *       500:
  *         description: 서버 오류
- */
-
+ */ 
