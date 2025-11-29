@@ -57,7 +57,10 @@ const options = {
       { basicAuth: [] },
     ],
   },
-  apis: ['./src/routes/*.js'], // 라우트 파일에서 주석을 읽어옴
+  apis: [
+    './src/routes/*.js', // 라우트 파일에서 주석을 읽어옴
+    './src/swagger/**/*.js' // Swagger 정의 파일
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
