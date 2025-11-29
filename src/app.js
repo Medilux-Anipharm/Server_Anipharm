@@ -20,6 +20,7 @@ const healthRoutes = require('./routes/health');
 const communityRoutes = require('./routes/community');
 const messageRoutes = require('./routes/messages');
 const notificationRoutes = require('./routes/notifications');
+const mapRoutes = require('./routes/map');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,6 +55,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/map', mapRoutes);
 
 // 404 핸들러
 app.use((req, res) => {

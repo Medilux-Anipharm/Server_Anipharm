@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL 데이터베이스
   postgres:
@@ -39,6 +37,11 @@ services:
       JWT_EXPIRES_IN: 7d
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
       JWT_REFRESH_EXPIRES_IN: 30d
+      # 네이버 맵 API 인증 정보
+      NAVER_GEOCODE_CLIENT_ID: ${NAVER_GEOCODE_CLIENT_ID:-}
+      NAVER_GEOCODE_CLIENT_SECRET: ${NAVER_GEOCODE_CLIENT_SECRET:-}
+      NAVER_SEARCH_CLIENT_ID: ${NAVER_SEARCH_CLIENT_ID:-${NAVER_GEOCODE_CLIENT_ID:-}}
+      NAVER_SEARCH_CLIENT_SECRET: ${NAVER_SEARCH_CLIENT_SECRET:-${NAVER_GEOCODE_CLIENT_SECRET:-}}
     ports:
       - "3000:3000"
     volumes:
