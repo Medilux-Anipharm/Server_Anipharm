@@ -20,10 +20,16 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    addressDetail: {
-      type: DataTypes.STRING(255),
+    operatingHours: {
+      type: DataTypes.TEXT,
       allowNull: true,
-      field: 'address_detail'
+      field: 'operating_hours',
+      comment: 'CSV에서 가져온 운영시간 원본 데이터'
+    },
+    website: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '홈페이지 URL'
     },
     latitude: {
       type: DataTypes.DECIMAL(10, 8),
