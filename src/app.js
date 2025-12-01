@@ -25,9 +25,33 @@ const mapRoutes = require('./routes/map');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// CORS 설정
+const corsOptions = {
+  origin: function (origin, callback) {
+    // 개발 환경에서는 모든 origin 허용
+    if (process.env.NODE_ENV === 'development' || !origin) {
+      callback(null, true);
+    } else {
+      // 프로덕션에서는 허용된 origin만
+      const allowedOrigins = [
+        'http://localhost:8081',  // React Native Web
+        'http://localhost:3000',
+        'http://192.168.0.53:8081'  // 모바일에서 접근
+      ];
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // 미들웨어
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 app.use(express.json({ limit: '10mb' }));
