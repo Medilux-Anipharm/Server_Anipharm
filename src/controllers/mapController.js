@@ -54,6 +54,48 @@ class MapController {
       });
     }
   }
+
+  /**
+   * 사용자 위치 저장
+   * POST /api/map/location
+   */
+  async saveLocation(req, res) {
+    try {
+      const { latitude, longitude, userId } = req.body;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ error: '위도와 경도가 필요합니다.' });
+      }
+
+      // 위치 정보 로깅 (나중에 DB에 저장할 수 있음)
+      logger.info('사용자 위치 수신:', {
+        userId: userId || 'anonymous',
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timestamp: new Date().toISOString()
+      });
+
+      // TODO: 필요시 DB에 사용자 위치 저장
+      // await User.update(
+      //   { lastLatitude: latitude, lastLongitude: longitude },
+      //   { where: { id: userId } }
+      // );
+
+      res.json({
+        success: true,
+        message: '위치가 성공적으로 조회되었습니다.',
+        location: {
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude)
+        }
+      });
+    } catch (error) {
+      logger.error('위치 저장 오류:', error);
+      res.status(500).json({ 
+        error: error.message || '위치 저장 중 오류가 발생했습니다.' 
+      });
+    }
+  }
 }
 
 module.exports = new MapController();
