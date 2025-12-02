@@ -210,14 +210,48 @@ class VeterinaryHospitalService {
   }
 
   /**
-   * 네이버 지도 API용 마커 데이터 생성
+   * 줌 레벨에 따른 반경 계산
+   * @param {number} zoomLevel - 지도 줌 레벨 (기본값: 14)
+   * @returns {number} 반경 (km)
    */
-  async getMarkersForMap(latitude, longitude, radiusKm = 5) {
+  _calculateRadiusFromZoom(zoomLevel = 14) {
+    // 줌 레벨에 따른 반경 계산
+    // 줌 레벨이 낮을수록 (줌 아웃) 더 넓은 범위
+    if (zoomLevel <= 10) {
+      return 50; // 매우 넓은 범위
+    } else if (zoomLevel <= 12) {
+      return 30; // 넓은 범위
+    } else if (zoomLevel <= 14) {
+      return 15; // 중간 범위
+    } else if (zoomLevel <= 16) {
+      return 10; // 좁은 범위
+    } else {
+      return 5; // 매우 좁은 범위
+    }
+  }
+
+  /**
+   * 네이버 지도 API용 마커 데이터 생성
+   * @param {number} latitude - 위도
+   * @param {number} longitude - 경도
+   * @param {number} radiusKm - 반경 (km, 기본값: 5)
+   * @param {number} zoomLevel - 지도 줌 레벨 (기본값: 14)
+   */
+  async getMarkersForMap(latitude, longitude, radiusKm = 5, zoomLevel = 14) {
     try {
-      const hospitals = await this.findNearbyHospitals(latitude, longitude, radiusKm);
+      // 줌 레벨이 제공된 경우 반경 자동 계산
+      const effectiveRadius = zoomLevel ? this._calculateRadiusFromZoom(zoomLevel) : radiusKm;
+      
+      // 반경에 따라 최대 반환 개수 조정
+      const maxResults = effectiveRadius >= 30 ? 100 : effectiveRadius >= 15 ? 50 : 30;
+      
+      const hospitals = await this.findNearbyHospitals(latitude, longitude, effectiveRadius);
+
+      // 최대 개수만큼만 반환
+      const limitedHospitals = hospitals.slice(0, maxResults);
 
       // 네이버 지도 마커 형식으로 변환
-      const markers = hospitals.map(hospital => ({
+      const markers = limitedHospitals.map(hospital => ({
         id: hospital.hospitalId,
         position: {
           lat: parseFloat(hospital.latitude),
@@ -229,7 +263,8 @@ class VeterinaryHospitalService {
         is24h: hospital.is24h,
         isEmergency: hospital.isEmergency,
         rating: hospital.ratingAverage,
-        reviewCount: hospital.reviewCount
+        reviewCount: hospital.reviewCount,
+        distance: hospital.distance // 거리 정보 추가
       }));
 
       return markers;

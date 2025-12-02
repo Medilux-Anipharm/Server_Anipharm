@@ -124,18 +124,26 @@ class VeterinaryPharmacyService {
             const longitude = result[0];
             const latitude = result[1];
             
-            // 변환 결과 검증 (한국 범위: 위도 33-38, 경도 124-132)
-            if (latitude < 33 || latitude > 38 || longitude < 124 || longitude > 132) {
-                console.warn(`변환된 좌표가 한국 범위를 벗어남: 위도 ${latitude}, 경도 ${longitude} (원본: X=${x}, Y=${y})`);
+            // 변환 결과 검증 (매우 관대한 범위: 위도 20-50, 경도 100-150)
+            // 한국 본토, 제주도, 독도 등 모든 영역 포함
+            // 극단적으로 벗어난 값만 경고 (예: 해외 좌표)
+            if (latitude < 20 || latitude > 50 || longitude < 100 || longitude > 150) {
+                console.warn(`변환된 좌표가 예상 범위를 벗어남: 위도 ${latitude}, 경도 ${longitude} (원본: X=${x}, Y=${y})`);
             }
             
+            // 모든 좌표를 반환 (검증 실패해도 데이터 보존)
             return {
                 latitude: parseFloat(latitude.toFixed(8)),
                 longitude: parseFloat(longitude.toFixed(8))
             };
         } catch (error) {
             console.error('좌표 변환 오류:', error, { x, y });
-            throw new Error(`좌표 변환 실패: ${error.message}`);
+            // 변환 실패 시에도 null 반환하지 않고 기본값 반환 (데이터 보존)
+            // 원본 좌표를 그대로 저장하거나 null로 저장
+            return {
+                latitude: null,
+                longitude: null
+            };
         }
     }// end _convertEPSG5174ToWGS84 method
 
@@ -194,14 +202,59 @@ class VeterinaryPharmacyService {
     }// end findNearbyPharmacies method
 
     /**
-     * 네이버 지도 API용 마커 데이터 생성
+     * 줌 레벨 기반 약국 검색 (더 많은 결과 반환)
+     * @param {number} latitude - 위도
+     * @param {number} longitude - 경도
+     * @param {number} zoomLevel - 지도 줌 레벨
      */
-    async getMarkersForMap(latitude, longitude, radiusKm = 5) {
+    async findNearbyPharmaciesByZoom(latitude, longitude, zoomLevel = 14) {
+        const radiusKm = this._calculateRadiusFromZoom(zoomLevel);
+        return await this.findNearbyPharmacies(latitude, longitude, radiusKm);
+    }// end findNearbyPharmaciesByZoom method
+
+    /**
+     * 줌 레벨에 따른 반경 계산
+     * @param {number} zoomLevel - 지도 줌 레벨 (기본값: 14)
+     * @returns {number} 반경 (km)
+     */
+    _calculateRadiusFromZoom(zoomLevel = 14) {
+        // 줌 레벨에 따른 반경 계산
+        // 줌 레벨이 낮을수록 (줌 아웃) 더 넓은 범위
+        if (zoomLevel <= 10) {
+            return 50; // 매우 넓은 범위
+        } else if (zoomLevel <= 12) {
+            return 30; // 넓은 범위
+        } else if (zoomLevel <= 14) {
+            return 15; // 중간 범위
+        } else if (zoomLevel <= 16) {
+            return 10; // 좁은 범위
+        } else {
+            return 5; // 매우 좁은 범위
+        }
+    }// end _calculateRadiusFromZoom method
+
+    /**
+     * 네이버 지도 API용 마커 데이터 생성
+     * @param {number} latitude - 위도
+     * @param {number} longitude - 경도
+     * @param {number} radiusKm - 반경 (km, 기본값: 10)
+     * @param {number} zoomLevel - 지도 줌 레벨 (기본값: 14)
+     */
+    async getMarkersForMap(latitude, longitude, radiusKm = 10, zoomLevel = 14) {
         try {
-            const pharmacies = await this.findNearbyPharmacies(latitude, longitude, radiusKm);
+            // 줌 레벨이 제공된 경우 반경 자동 계산
+            const effectiveRadius = zoomLevel ? this._calculateRadiusFromZoom(zoomLevel) : radiusKm;
+            
+            // 반경에 따라 최대 반환 개수 조정
+            const maxResults = effectiveRadius >= 30 ? 100 : effectiveRadius >= 15 ? 50 : 30;
+            
+            const pharmacies = await this.findNearbyPharmacies(latitude, longitude, effectiveRadius);
+
+            // 최대 개수만큼만 반환
+            const limitedPharmacies = pharmacies.slice(0, maxResults);
 
             // 네이버 지도 마커 형식으로 변환
-            const markers = pharmacies.map(pharmacy => ({
+            const markers = limitedPharmacies.map(pharmacy => ({
                 id: pharmacy.pharmacyId,
                 position: {
                     lat: parseFloat(pharmacy.latitude),
@@ -210,7 +263,8 @@ class VeterinaryPharmacyService {
                 title: pharmacy.name,
                 address: pharmacy.address,
                 phone: pharmacy.phone,
-                isLateNight: pharmacy.isLateNight
+                isLateNight: pharmacy.isLateNight,
+                distance: pharmacy.distance // 거리 정보 추가
             }));
 
             return markers;

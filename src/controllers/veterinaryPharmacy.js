@@ -20,7 +20,7 @@ exports.importCSVData = async (req, res) => {
 
 exports.findNearby = async (req, res) => {
     try{
-        const {latitude, longitude, radius = 5} = req.query;
+        const {latitude, longitude, radius = 10} = req.query;
 
         if(!latitude || !longitude) {
             return res.status(400).json({
@@ -54,7 +54,7 @@ exports.findNearby = async (req, res) => {
  */
 exports.getMapMarkers = async (req, res) => {
     try {
-        const { latitude, longitude, radius = 5 } = req.query;
+        const { latitude, longitude, radius = 10, zoomLevel } = req.query;
 
         if (!latitude || !longitude) {
             return res.status(400).json({
@@ -66,7 +66,8 @@ exports.getMapMarkers = async (req, res) => {
         const markers = await veterinaryPharmacyService.getMarkersForMap(
             parseFloat(latitude),
             parseFloat(longitude),
-            parseFloat(radius)
+            radius ? parseFloat(radius) : undefined,
+            zoomLevel ? parseFloat(zoomLevel) : undefined
         );
 
         res.status(200).json({

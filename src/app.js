@@ -28,31 +28,52 @@ const PORT = process.env.PORT || 3000;
 // CORS 설정
 const corsOptions = {
   origin: function (origin, callback) {
-    if (process.env.NODE_ENV === 'development' || !origin) {
+    // 개발 환경에서는 모든 origin 허용
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+      return;
+    }
+    
+    // origin이 없는 경우 (모바일 앱, Postman 등) 허용
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    
+    // 프로덕션에서는 허용된 origin만
+    const allowedOrigins = [
+      'http://localhost:8081',  // React Native Web
+      'http://localhost:3000',
+      'http://127.0.0.1:8081',
+      'http://127.0.0.1:3000',
+      'http://192.168.0.53:8081',  // 모바일에서 접근
+      'http://192.168.0.57:8081',  // 현재 사용 중인 IP
+      'http://192.168.0.57:3000'   // 백엔드 서버
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      // 프로덕션에서는 허용된 origin만
-      const allowedOrigins = [
-        'http://localhost:8081',  // React Native Web
-        'http://localhost:3000',
-        'http://192.168.0.53:8081',  // 모바일에서 접근
-        'http://192.168.0.57:8081',  // 현재 사용 중인 IP
-        'http://192.168.0.57:3000'   // 백엔드 서버
-      ];
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      // 개발 환경이 아닌 경우에만 CORS 오류
+      console.warn('CORS 차단된 origin:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 // 미들웨어
-app.use(helmet());
+// CORS를 먼저 적용 (helmet보다 먼저)
 app.use(cors(corsOptions));
+
+// helmet 설정 (CORS와 충돌 방지)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // 개발 환경에서는 비활성화
+}));
 app.use(compression());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 app.use(express.json({ limit: '10mb' }));
