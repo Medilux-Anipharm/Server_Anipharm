@@ -28,7 +28,6 @@ const PORT = process.env.PORT || 3000;
 // CORS 설정
 const corsOptions = {
   origin: function (origin, callback) {
-    // 개발 환경에서는 모든 origin 허용
     if (process.env.NODE_ENV === 'development' || !origin) {
       callback(null, true);
     } else {

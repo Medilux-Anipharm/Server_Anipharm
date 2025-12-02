@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
+const geolib = require('geolib');
 const db = require('../models');
 
 class VeterinaryHospitalService {
@@ -119,30 +120,47 @@ class VeterinaryHospitalService {
    */
   async findNearbyHospitals(latitude, longitude, radiusKm = 5) {
     try {
-      // Haversine 공식을 사용한 거리 계산
-      const hospitals = await this.VeterinaryHospital.findAll({
-        attributes: {
-          include: [
-            [
-              db.sequelize.literal(`(
-                6371 * acos(
-                  cos(radians(${latitude})) *
-                  cos(radians(latitude)) *
-                  cos(radians(longitude) - radians(${longitude})) +
-                  sin(radians(${latitude})) *
-                  sin(radians(latitude))
-                )
-              )`),
-              'distance'
-            ]
-          ]
-        },
-        having: db.sequelize.literal(`distance < ${radiusKm}`),
-        order: [[db.sequelize.literal('distance'), 'ASC']],
-        limit: 50
+      // 모든 병원 데이터를 가져온 후 JavaScript에서 거리 계산 및 필터링
+      const allHospitals = await this.VeterinaryHospital.findAll({
+        attributes: ['hospitalId', 'name', 'phone', 'address', 'operatingHours', 'website', 
+                     'latitude', 'longitude', 'is24h', 'isEmergency', 'ratingAverage', 'reviewCount']
       });
 
-      return hospitals;
+      // 기준 위치
+      const centerPoint = { latitude, longitude };
+      const radiusMeters = radiusKm * 1000; // km를 미터로 변환
+
+      // 거리 계산 및 필터링
+      const hospitalsWithDistance = allHospitals
+        .map(hospital => {
+          // 좌표가 유효한지 확인
+          if (!hospital.latitude || !hospital.longitude) {
+            return null;
+          }
+
+          const hospitalPoint = {
+            latitude: parseFloat(hospital.latitude),
+            longitude: parseFloat(hospital.longitude)
+          };
+
+          // 거리 계산 (미터 단위)
+          const distanceMeters = geolib.getDistance(centerPoint, hospitalPoint);
+          const distanceKm = distanceMeters / 1000; // km로 변환
+
+          // 반경 내에 있는지 확인
+          if (distanceKm <= radiusKm) {
+            return {
+              ...hospital.toJSON(),
+              distance: distanceKm // km 단위로 저장
+            };
+          }
+          return null;
+        })
+        .filter(hospital => hospital !== null) // null 제거
+        .sort((a, b) => a.distance - b.distance) // 거리순 정렬
+        .slice(0, 50); // 최대 50개만 반환
+
+      return hospitalsWithDistance;
     } catch (error) {
       console.error('주변 병원 검색 오류:', error);
       throw error;
