@@ -32,10 +32,10 @@ class MapController {
    */
   async search(req, res) {
     try {
-      const { category, region, latitude, longitude, display, start } = req.query;
+      const { category, region, latitude, longitude, display, start, keyword } = req.query;
       
-      if (!category) {
-        return res.status(400).json({ error: '카테고리 파라미터가 필요합니다.' });
+      if (!category && !keyword) {
+        return res.status(400).json({ error: '카테고리 또는 키워드 파라미터가 필요합니다.' });
       }
 
       const options = {};
@@ -44,8 +44,9 @@ class MapController {
       if (longitude) options.longitude = parseFloat(longitude);
       if (display) options.display = parseInt(display);
       if (start) options.start = parseInt(start);
+      if (keyword) options.keyword = keyword; // 키워드 검색 지원
 
-      const places = await naverMapService.searchByCategory(category, options);
+      const places = await naverMapService.searchByCategory(category || 'hospital', options);
       res.json(places);
     } catch (error) {
       logger.error('장소 검색 오류:', error);

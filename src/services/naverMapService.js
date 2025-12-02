@@ -62,13 +62,38 @@ class NaverMapService {
     async searchByCategory(category, options ={}){
         try{
             // API 인증 정보 확인
-            if (!this.searchClientId || !this.searchClientSecret) {
-                throw new Error('네이버 검색 API 인증 정보가 설정되지 않았습니다.');
+            // NAVER_SEARCH_CLIENT_ID가 없으면 NAVER_GEOCODE_CLIENT_ID를 사용 (fallback)
+            // 빈 문자열도 체크
+            const searchClientId = (this.searchClientId && this.searchClientId.trim()) || (this.geocodeClientId && this.geocodeClientId.trim());
+            const searchClientSecret = (this.searchClientSecret && this.searchClientSecret.trim()) || (this.geocodeClientSecret && this.geocodeClientSecret.trim());
+            
+            if (!searchClientId || !searchClientSecret) {
+                // 디버깅 정보
+                console.error('네이버 API 인증 정보 확인:', {
+                    hasSearchClientId: !!this.searchClientId,
+                    hasSearchClientSecret: !!this.searchClientSecret,
+                    hasGeocodeClientId: !!this.geocodeClientId,
+                    hasGeocodeClientSecret: !!this.geocodeClientSecret,
+                    searchClientIdValue: this.searchClientId ? `${this.searchClientId.substring(0, 5)}...` : 'null',
+                    geocodeClientIdValue: this.geocodeClientId ? `${this.geocodeClientId.substring(0, 5)}...` : 'null',
+                });
+                throw new Error('네이버 검색 API 인증 정보가 설정되지 않았습니다. NAVER_SEARCH_CLIENT_ID 또는 NAVER_GEOCODE_CLIENT_ID를 확인해주세요.');
             }
 
-            const keyword = this.categoryKeywords[category]
-            if(!keyword){
-                throw new Error(`지원하지 않는 카테고리 입니다. ${category}`)
+            // 키워드가 직접 제공된 경우 우선 사용
+            let keyword;
+            if (options.keyword) {
+                // 직접 키워드가 제공된 경우
+                keyword = options.keyword;
+            } else if (category === 'all') {
+                // 'all' 카테고리인 경우 '동물' 키워드 사용
+                keyword = '동물';
+            } else {
+                // 일반 카테고리인 경우
+                keyword = this.categoryKeywords[category];
+                if(!keyword){
+                    throw new Error(`지원하지 않는 카테고리 입니다. ${category}`)
+                }
             }
 
             const query = options.region ? `${options.region} ${keyword}` : keyword;
@@ -81,8 +106,8 @@ class NaverMapService {
                     sort : 'random',
                 },
                 headers: {
-                    "X-Naver-Client-Id": this.searchClientId,
-                    "X-Naver-Client-Secret": this.searchClientSecret,
+                    "X-Naver-Client-Id": searchClientId,
+                    "X-Naver-Client-Secret": searchClientSecret,
                 }
             })
 
