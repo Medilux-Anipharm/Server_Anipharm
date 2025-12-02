@@ -35,7 +35,9 @@ const corsOptions = {
       const allowedOrigins = [
         'http://localhost:8081',  // React Native Web
         'http://localhost:3000',
-        'http://192.168.0.53:8081'  // 모바일에서 접근
+        'http://192.168.0.53:8081',  // 모바일에서 접근
+        'http://192.168.0.57:8081',  // 현재 사용 중인 IP
+        'http://192.168.0.57:3000'   // 백엔드 서버
       ];
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);

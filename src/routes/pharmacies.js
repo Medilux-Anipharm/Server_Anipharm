@@ -1,15 +1,19 @@
+/**
+ * 동물약국 라우터
+ */
+
 const express = require('express');
 const router = express.Router();
+const veterinaryPharmacyController = require('../controllers/veterinaryPharmacy');
 
-// TODO: 약국 관련 라우트 구현
-// GET /api/pharmacies - 약국 목록 조회 (위치 기반)
-// GET /api/pharmacies/:pharmacyId - 약국 상세 조회
-// GET /api/pharmacies/:pharmacyId/reviews - 약국 리뷰 조회
-// POST /api/pharmacies/:pharmacyId/reviews - 약국 리뷰 작성
+// CSV 데이터 import (관리자용)
+router.post('/import', veterinaryPharmacyController.importCSVData);
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Pharmacy routes' });
-});
+// 주변 동물약국 검색
+router.get('/nearby', veterinaryPharmacyController.findNearby);
+
+// 네이버 지도 API용 마커 데이터 조회
+router.get('/markers', veterinaryPharmacyController.getMapMarkers);
 
 module.exports = router;
 

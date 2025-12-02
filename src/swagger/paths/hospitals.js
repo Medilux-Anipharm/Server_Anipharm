@@ -85,7 +85,9 @@
  *   post:
  *     summary: CSV 데이터 import (관리자용)
  *     tags: [VeterinaryHospital]
- *     description: 동물병원 CSV 파일을 읽어서 데이터베이스에 저장합니다.
+ *     description: 동물병원 CSV 파일을 읽어서 데이터베이스에 저장합니다. data/csv/동물병원.csv 파일을 읽어서 저장합니다.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: 성공적으로 데이터를 저장했습니다.
@@ -105,10 +107,25 @@
  *                   properties:
  *                     success:
  *                       type: boolean
+ *                       example: true
  *                     count:
- *                       type: number
+ *                       type: integer
+ *                       example: 150
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: CSV 데이터 import 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -117,7 +134,7 @@
  *   get:
  *     summary: 주변 동물병원 검색
  *     tags: [VeterinaryHospital]
- *     description: 위치 기반으로 주변 동물병원을 검색합니다.
+ *     description: 위치 기반으로 주변 동물병원을 검색합니다. Haversine 공식을 사용하여 거리를 계산하고, 반경 내의 병원을 거리순으로 정렬하여 반환합니다 (최대 50개).
  *     parameters:
  *       - in: query
  *         name: latitude
@@ -139,8 +156,9 @@
  *         name: radius
  *         schema:
  *           type: number
+ *           format: double
  *           default: 5
- *         description: 검색 반경 (km)
+ *         description: 검색 반경 (km 단위, 기본값 5km)
  *         example: 5
  *     responses:
  *       200:
@@ -152,14 +170,47 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/VeterinaryHospital'
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/VeterinaryHospital'
+ *                       - type: object
+ *                         properties:
+ *                           distance:
+ *                             type: number
+ *                             format: double
+ *                             description: 거리 (km 단위)
+ *                             example: 1.5
  *       400:
  *         description: 잘못된 요청 (위도/경도 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 위도와 경도를 입력해주세요.
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 주변 병원 검색 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -168,21 +219,23 @@
  *   get:
  *     summary: 키워드로 동물병원 검색
  *     tags: [VeterinaryHospital]
- *     description: 병원명 또는 주소로 동물병원을 검색합니다.
+ *     description: 병원명 또는 주소로 동물병원을 검색합니다. LIKE 검색을 사용하여 부분 일치하는 결과를 반환하며, 평점 순으로 정렬됩니다.
  *     parameters:
  *       - in: query
  *         name: keyword
  *         required: true
  *         schema:
  *           type: string
- *         description: 검색 키워드 (병원명 또는 주소)
+ *         description: 검색 키워드 (병원명 또는 주소에 포함된 문자열)
  *         example: 강남
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 20
- *         description: 결과 개수 제한
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 결과 개수 제한 (기본값 20, 최대 100)
  *         example: 20
  *     responses:
  *       200:
@@ -194,14 +247,39 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/VeterinaryHospital'
  *       400:
  *         description: 잘못된 요청 (키워드 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 검색어를 입력해주세요.
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 검색 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -210,7 +288,7 @@
  *   get:
  *     summary: 네이버 지도 API용 마커 데이터 조회
  *     tags: [VeterinaryHospital]
- *     description: 네이버 지도에 표시할 마커 데이터를 반환합니다.
+ *     description: 네이버 지도에 표시할 마커 데이터를 반환합니다. 주변 병원 검색 결과를 네이버 지도 마커 형식으로 변환하여 반환합니다.
  *     parameters:
  *       - in: query
  *         name: latitude
@@ -232,8 +310,9 @@
  *         name: radius
  *         schema:
  *           type: number
+ *           format: double
  *           default: 5
- *         description: 검색 반경 (km)
+ *         description: 검색 반경 (km 단위, 기본값 5km)
  *         example: 5
  *     responses:
  *       200:
@@ -245,14 +324,39 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/MapMarker'
  *       400:
- *         description: 잘못된 요청
+ *         description: 잘못된 요청 (위도/경도 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 위도와 경도를 입력해주세요.
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 마커 데이터 조회 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -261,7 +365,7 @@
  *   get:
  *     summary: 24시간 운영 병원 조회
  *     tags: [VeterinaryHospital]
- *     description: 24시간 운영하는 동물병원 목록을 조회합니다.
+ *     description: 24시간 운영하는 동물병원 목록을 조회합니다. 평점 순으로 정렬되어 반환됩니다.
  *     responses:
  *       200:
  *         description: 조회 성공
@@ -272,12 +376,26 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/VeterinaryHospital'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 24시간 병원 조회 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -286,14 +404,16 @@
  *   get:
  *     summary: 평점 높은 병원 조회
  *     tags: [VeterinaryHospital]
- *     description: 평점이 높은 동물병원 목록을 조회합니다 (최소 리뷰 5개 이상).
+ *     description: 평점이 높은 동물병원 목록을 조회합니다. 최소 리뷰 5개 이상인 병원만 조회되며, 평점 순으로 정렬됩니다.
  *     parameters:
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *         description: 결과 개수 제한
+ *           minimum: 1
+ *           maximum: 100
+ *         description: 결과 개수 제한 (기본값 10, 최대 100)
  *         example: 10
  *     responses:
  *       200:
@@ -305,12 +425,26 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/VeterinaryHospital'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 평점 높은 병원 조회 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -319,14 +453,14 @@
  *   get:
  *     summary: 동물병원 상세 정보 조회
  *     tags: [VeterinaryHospital]
- *     description: 특정 동물병원의 상세 정보를 조회합니다 (사진, 리뷰 포함).
+ *     description: 특정 동물병원의 상세 정보를 조회합니다. 사진(FacilityPhoto)과 리뷰(FacilityReview) 정보가 포함됩니다.
  *     parameters:
  *       - in: path
  *         name: hospitalId
  *         required: true
  *         schema:
  *           type: integer
- *         description: 병원 ID
+ *         description: 병원 고유 ID
  *         example: 1
  *     responses:
  *       200:
@@ -338,10 +472,48 @@
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
- *                   $ref: '#/components/schemas/VeterinaryHospital'
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/VeterinaryHospital'
+ *                     - type: object
+ *                       properties:
+ *                         photos:
+ *                           type: array
+ *                           description: 병원 사진 목록
+ *                           items:
+ *                             type: object
+ *                         reviews:
+ *                           type: array
+ *                           description: 병원 리뷰 목록
+ *                           items:
+ *                             type: object
  *       404:
  *         description: 병원을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 해당 동물병원을 찾을 수 없습니다.
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: 병원 정보 조회 중 오류가 발생했습니다.
+ *                 error:
+ *                   type: string
  */
