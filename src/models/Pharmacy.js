@@ -25,6 +25,17 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'address_detail'
     },
+    operatingHours: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'operating_hours',
+      comment: 'CSV에서 가져온 운영시간 원본 데이터'
+    },
+    website: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '홈페이지 URL'
+    },
     latitude: {
       type: DataTypes.DECIMAL(10, 8),
       allowNull: false
@@ -37,6 +48,16 @@ module.exports = (sequelize) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       field: 'is_late_night'
+    },
+    is24h: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_24h'
+    },
+    isEmergency: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_emergency'
     },
     ratingAverage: {
       type: DataTypes.DECIMAL(3, 2),
