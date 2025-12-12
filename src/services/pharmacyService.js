@@ -10,7 +10,7 @@ const csv = require('csv-parser');
 const geolib = require('geolib');
 const db = require('../models');
 
-class VeterinaryPharmacyService {
+class PharmacyService {
   constructor() {
     this.Pharmacy = db.Pharmacy;
   }
@@ -343,5 +343,5 @@ class VeterinaryPharmacyService {
   }
 }
 
-module.exports = new VeterinaryPharmacyService();
+module.exports = new PharmacyService();
 

@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const VeterinaryHospital = sequelize.define('VeterinaryHospital', {
+  const Hospital = sequelize.define('Hospital', {
     hospitalId: {
       type: DataTypes.BIGINT,
       primaryKey: true,
@@ -70,10 +70,10 @@ module.exports = (sequelize) => {
     ]
   });
 
-  VeterinaryHospital.associate = (models) => {
+  Hospital.associate = (models) => {
     // 관계 없음
   };
 
-  return VeterinaryHospital;
+  return Hospital;
 };
 

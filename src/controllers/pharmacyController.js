@@ -2,14 +2,14 @@
  * 동물약국 컨트롤러
  */
 
-const veterinaryPharmacyService = require('../services/veterinaryPharmacyService');
+const pharmacyService = require('../services/pharmacyService');
 
 /**
  * CSV 데이터 import (관리자용)
  */
 exports.importCSVData = async (req, res) => {
     try {
-        const result = await veterinaryPharmacyService.importFromCSV();
+        const result = await pharmacyService.importFromCSV();
         res.status(200).json({
             success: true,
             message: '동물약국 데이터를 성공적으로 저장했습니다.',
@@ -39,7 +39,7 @@ exports.findNearby = async (req, res) => {
             });
         }
 
-        const pharmacies = await veterinaryPharmacyService.findNearbyPharmacies(
+        const pharmacies = await pharmacyService.findNearbyPharmacies(
             parseFloat(latitude),
             parseFloat(longitude),
             parseFloat(radius)
@@ -73,7 +73,7 @@ exports.searchByKeyword = async (req, res) => {
             });
         }
 
-        const pharmacies = await veterinaryPharmacyService.searchByKeyword(keyword, limit);
+        const pharmacies = await pharmacyService.searchByKeyword(keyword, limit);
 
         res.status(200).json({
             success: true,
@@ -96,7 +96,7 @@ exports.getDetail = async (req, res) => {
     try {
         const { pharmacyId } = req.params;
 
-        const pharmacy = await veterinaryPharmacyService.getPharmacyDetail(pharmacyId);
+        const pharmacy = await pharmacyService.getPharmacyDetail(pharmacyId);
 
         if (!pharmacy) {
             return res.status(404).json({
@@ -133,7 +133,7 @@ exports.getMapMarkers = async (req, res) => {
             });
         }
 
-        const markers = await veterinaryPharmacyService.getMarkersForMap(
+        const markers = await pharmacyService.getMarkersForMap(
             parseFloat(latitude),
             parseFloat(longitude),
             radius ? parseFloat(radius) : undefined,
@@ -159,7 +159,7 @@ exports.getMapMarkers = async (req, res) => {
  */
 exports.get24HourPharmacies = async (req, res) => {
     try {
-        const pharmacies = await veterinaryPharmacyService.get24HourPharmacies();
+        const pharmacies = await pharmacyService.get24HourPharmacies();
 
         res.status(200).json({
             success: true,
@@ -182,7 +182,7 @@ exports.getTopRated = async (req, res) => {
     try {
         const { limit = 10 } = req.query;
 
-        const pharmacies = await veterinaryPharmacyService.getTopRatedPharmacies(limit);
+        const pharmacies = await pharmacyService.getTopRatedPharmacies(limit);
 
         res.status(200).json({
             success: true,
@@ -197,6 +197,4 @@ exports.getTopRated = async (req, res) => {
         });
     }
 };
-
-
 

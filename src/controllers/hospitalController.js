@@ -2,14 +2,14 @@
  * 동물병원 컨트롤러
  */
 
-const veterinaryHospitalService = require('../services/veterinaryHospitalService');
+const hospitalService = require('../services/hospitalService');
 
 /**
  * CSV 데이터 import (관리자용)
  */
 exports.importCSVData = async (req, res) => {
   try {
-    const result = await veterinaryHospitalService.importFromCSV();
+    const result = await hospitalService.importFromCSV();
 
     res.status(200).json({
       success: true,
@@ -40,7 +40,7 @@ exports.findNearby = async (req, res) => {
       });
     }
 
-    const hospitals = await veterinaryHospitalService.findNearbyHospitals(
+    const hospitals = await hospitalService.findNearbyHospitals(
       parseFloat(latitude),
       parseFloat(longitude),
       parseFloat(radius)
@@ -74,7 +74,7 @@ exports.searchByKeyword = async (req, res) => {
       });
     }
 
-    const hospitals = await veterinaryHospitalService.searchByKeyword(keyword, limit);
+    const hospitals = await hospitalService.searchByKeyword(keyword, limit);
 
     res.status(200).json({
       success: true,
@@ -97,7 +97,7 @@ exports.getDetail = async (req, res) => {
   try {
     const { hospitalId } = req.params;
 
-    const hospital = await veterinaryHospitalService.getHospitalDetail(hospitalId);
+    const hospital = await hospitalService.getHospitalDetail(hospitalId);
 
     if (!hospital) {
       return res.status(404).json({
@@ -134,7 +134,7 @@ exports.getMapMarkers = async (req, res) => {
       });
     }
 
-    const markers = await veterinaryHospitalService.getMarkersForMap(
+    const markers = await hospitalService.getMarkersForMap(
       parseFloat(latitude),
       parseFloat(longitude),
       radius ? parseFloat(radius) : undefined,
@@ -160,7 +160,7 @@ exports.getMapMarkers = async (req, res) => {
  */
 exports.get24HourHospitals = async (req, res) => {
   try {
-    const hospitals = await veterinaryHospitalService.get24HourHospitals();
+    const hospitals = await hospitalService.get24HourHospitals();
 
     res.status(200).json({
       success: true,
@@ -183,7 +183,7 @@ exports.getTopRated = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
 
-    const hospitals = await veterinaryHospitalService.getTopRatedHospitals(limit);
+    const hospitals = await hospitalService.getTopRatedHospitals(limit);
 
     res.status(200).json({
       success: true,
@@ -198,3 +198,4 @@ exports.getTopRated = async (req, res) => {
     });
   }
 };
+
