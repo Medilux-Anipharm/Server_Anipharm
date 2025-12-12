@@ -10,12 +10,8 @@ module.exports = (sequelize) => {
     },
     conversationId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
-      field: 'conversation_id',
-      references: {
-        model: 'chatbot_conversations',
-        key: 'conversation_id'
-      }
+      allowNull: true,
+      field: 'conversation_id'
     },
     petId: {
       type: DataTypes.BIGINT,
@@ -73,12 +69,11 @@ module.exports = (sequelize) => {
     tableName: 'health_check_forms',
     timestamps: false,
     indexes: [
-      { fields: ['conversation_id'] }
+      { fields: ['pet_id'] }
     ]
   });
 
   HealthCheckForm.associate = (models) => {
-    HealthCheckForm.belongsTo(models.ChatbotConversation, { foreignKey: 'conversation_id', as: 'conversation' });
     HealthCheckForm.belongsTo(models.Pet, { foreignKey: 'pet_id', as: 'pet' });
   };
 

@@ -91,7 +91,6 @@ module.exports = (sequelize) => {
       as: 'reviews',
       scope: { facility_type: 'pharmacy' }
     });
-    Pharmacy.hasMany(models.FacilityInventory, { foreignKey: 'pharmacy_id', as: 'inventory' });
   };
 
   return Pharmacy;

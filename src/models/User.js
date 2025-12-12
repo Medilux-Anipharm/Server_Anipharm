@@ -97,14 +97,8 @@ module.exports = (sequelize) => {
   User.associate = (models) => {
     User.hasMany(models.Pet, { foreignKey: 'user_id', as: 'pets' });
     User.hasMany(models.SocialLogin, { foreignKey: 'user_id', as: 'socialLogins' });
-    User.hasMany(models.LoginSession, { foreignKey: 'user_id', as: 'sessions' });
-    User.hasMany(models.CommunityPost, { foreignKey: 'user_id', as: 'posts' });
     User.hasMany(models.FacilityReview, { foreignKey: 'user_id', as: 'reviews' });
-    User.hasMany(models.ChatbotConversation, { foreignKey: 'user_id', as: 'conversations' });
     User.hasMany(models.HealthRecord, { foreignKey: 'user_id', as: 'healthRecords' });
-    User.hasMany(models.Message, { foreignKey: 'sender_id', as: 'sentMessages' });
-    User.hasMany(models.Message, { foreignKey: 'receiver_id', as: 'receivedMessages' });
-    User.hasMany(models.Notification, { foreignKey: 'user_id', as: 'notifications' });
   };
 
   return User;

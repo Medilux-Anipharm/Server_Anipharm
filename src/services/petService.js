@@ -1,5 +1,5 @@
 const { Pet, PetHealthConcern } = require('../models');
-const { VALID_HEALTH_CONCERNS, MAX_HEALTH_CONCERNS } = require('../constants/petHealthConcerns');
+
 
 class PetService {
   async createPet(userId, petData) {
