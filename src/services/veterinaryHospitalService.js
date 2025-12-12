@@ -195,12 +195,7 @@ class VeterinaryHospitalService {
    */
   async getHospitalDetail(hospitalId) {
     try {
-      const hospital = await this.VeterinaryHospital.findByPk(hospitalId, {
-        include: [
-          { model: db.FacilityPhoto, as: 'photos' },
-          { model: db.FacilityReview, as: 'reviews' }
-        ]
-      });
+      const hospital = await this.VeterinaryHospital.findByPk(hospitalId);
 
       return hospital;
     } catch (error) {

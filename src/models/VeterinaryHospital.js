@@ -71,16 +71,7 @@ module.exports = (sequelize) => {
   });
 
   VeterinaryHospital.associate = (models) => {
-    VeterinaryHospital.hasMany(models.FacilityPhoto, { 
-      foreignKey: 'facility_id', 
-      as: 'photos',
-      scope: { facility_type: 'hospital' }
-    });
-    VeterinaryHospital.hasMany(models.FacilityReview, { 
-      foreignKey: 'facility_id', 
-      as: 'reviews',
-      scope: { facility_type: 'hospital' }
-    });
+    // 관계 없음
   };
 
   return VeterinaryHospital;

@@ -81,16 +81,7 @@ module.exports = (sequelize) => {
   });
 
   Pharmacy.associate = (models) => {
-    Pharmacy.hasMany(models.FacilityPhoto, { 
-      foreignKey: 'facility_id', 
-      as: 'photos',
-      scope: { facility_type: 'pharmacy' }
-    });
-    Pharmacy.hasMany(models.FacilityReview, { 
-      foreignKey: 'facility_id', 
-      as: 'reviews',
-      scope: { facility_type: 'pharmacy' }
-    });
+    // 관계 없음
   };
 
   return Pharmacy;

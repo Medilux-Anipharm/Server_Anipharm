@@ -229,12 +229,7 @@ class VeterinaryPharmacyService {
    */
   async getPharmacyDetail(pharmacyId) {
     try {
-      const pharmacy = await this.Pharmacy.findByPk(pharmacyId, {
-        include: [
-          { model: db.FacilityPhoto, as: 'photos' },
-          { model: db.FacilityReview, as: 'reviews' }
-        ]
-      });
+      const pharmacy = await this.Pharmacy.findByPk(pharmacyId);
 
       return pharmacy;
     } catch (error) {

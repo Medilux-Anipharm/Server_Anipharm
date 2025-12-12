@@ -96,8 +96,6 @@ module.exports = (sequelize) => {
 
   User.associate = (models) => {
     User.hasMany(models.Pet, { foreignKey: 'user_id', as: 'pets' });
-    User.hasMany(models.SocialLogin, { foreignKey: 'user_id', as: 'socialLogins' });
-    User.hasMany(models.FacilityReview, { foreignKey: 'user_id', as: 'reviews' });
     User.hasMany(models.HealthRecord, { foreignKey: 'user_id', as: 'healthRecords' });
   };
 
