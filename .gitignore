@@ -4,7 +4,8 @@ package-lock.json
 yarn.lock
 
 #docs
-docs/md
+docs/*.md
+docs/**/*.md
 
 # Environment variables
 .env
