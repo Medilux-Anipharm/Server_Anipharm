@@ -1,36 +1,76 @@
 // src/services/chatbotService.js
 // OpenAI API 호출 및 프롬프트 구성 담당
-const axios = require("axios");
+
+
+
+const OpenAI = require("openai");
 
 class ChatbotService {
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY;
+    console.log('apiKey', this.apiKey);
     this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-    this.baseUrl = "https://api.openai.com/v1";
+    this.client = null; // 지연 초기화
+  }
+
+//   /**
+//    * OpenAI 클라이언트 초기화 (지연 초기화)
+//    * @private
+//    */
+  _getClient() {
+    if (!this.client) {
+      if (!this.apiKey) {
+        throw new Error('OPENAI_API_KEY 환경 변수가 설정되지 않았습니다. 환경 변수 OPENAI_API_KEY를 확인해주세요.');
+      }
+      this.client = new OpenAI({
+        apiKey: this.apiKey,
+      });
+    }
+    return this.client;
   }
 
   /**
    * OpenAI API 호출
    * @param {Array} messages - 메시지 배열
+   * @param {boolean} requireJson - JSON 형식 응답 필수 여부 (기본값: false)
    * @returns {Promise<object>} OpenAI 응답
    */
-  async sendMessage(messages) {
-    const response = await axios.post(
-      `${this.baseUrl}/chat/completions`,
-      {
+  async sendMessage(messages, requireJson = false) {
+    try {
+      const client = this._getClient(); // 지연 초기화
+      
+      // JSON 형식이 필요한 경우에만 response_format 설정
+      const requestOptions = {
         model: this.model,
         messages: messages,
-        response_format: { type: "json_object" },
         temperature: 0.3
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
+      };
+      
+      if (requireJson) {
+        requestOptions.response_format = { type: "json_object" };
       }
-    );
-    return response.data;
+      
+      const completion = await client.chat.completions.create(requestOptions);
+
+      return {
+        choices: completion.choices,
+        usage: completion.usage,
+        model: completion.model
+      };
+    } catch (error) {
+      // OpenAI SDK 에러 처리
+      if (error.status === 401) {
+        throw new Error('OpenAI API 인증 실패. API 키가 유효하지 않거나 만료되었습니다. OPENAI_API_KEY를 확인해주세요.');
+      } else if (error.status === 429) {
+        throw new Error('OpenAI API 요청 한도 초과. 잠시 후 다시 시도해주세요.');
+      } else if (error.status === 500) {
+        throw new Error('OpenAI API 서버 오류. 잠시 후 다시 시도해주세요.');
+      } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        throw new Error('OpenAI API에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      } else {
+        throw new Error(`OpenAI API 오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      }
+    }
   }
 
   /**
@@ -63,7 +103,19 @@ class ChatbotService {
     if (isAssessment) {
       messages.push({
         role: 'user',
-        content: '건강 체크표와 대화 내용을 종합하여 4단계 행동 가이드를 제시해주세요. JSON 형식으로 응답해주세요: {"triage_level": "BLUE|GREEN|AMBER|RED", "recommended_actions": ["조치1", "조치2", "조치3"], "health_check_summary": "요약"}'
+        content: `위의 건강 체크표와 전체 대화 내용을 종합적으로 분석하여 4단계 행동 가이드를 제시해주세요.
+
+**중요:**
+- 체크표의 자가검진 정보뿐만 아니라 대화에서 언급된 모든 증상, 우려사항, 관찰 사항을 반영해주세요.
+- 대화 내용에서 추가로 파악된 정보가 있다면 반드시 고려해주세요.
+- 체크표와 대화 내용이 일치하는지, 또는 대화에서 새로운 정보가 있는지 종합적으로 판단해주세요.
+
+JSON 형식으로 응답해주세요:
+{
+  "triage_level": "BLUE|GREEN|AMBER|RED",
+  "recommended_actions": ["조치1", "조치2", "조치3"],
+  "health_check_summary": "체크표와 대화 내용을 종합한 요약"
+}`
       });
     }
 
@@ -105,6 +157,8 @@ class ChatbotService {
   _buildSystemPrompt(pet, healthCheck, petContext, isAssessment = false) {
     let prompt = `당신은 반려동물 1차 트리아지 보조원입니다. 의료행위는 할 수 없으며 정보 제공용으로만 활용됩니다.
 
+${isAssessment ? '**중요: 평가 응답은 반드시 JSON 형식으로 제공해주세요.**' : ''}
+
 반려동물 정보:
 - 이름: ${pet.name}
 - 종류: ${pet.species}
@@ -144,12 +198,24 @@ class ChatbotService {
 `;
 
     if (isAssessment) {
-      prompt += `평가 시 다음 형식으로 JSON 응답:
+      prompt += `**평가 지침:**
+위의 건강 체크표와 아래 대화 내용을 모두 종합적으로 분석하여 평가해주세요.
+
+평가 시 다음 사항을 고려하세요:
+1. 건강 체크표의 자가검진 정보 (건강 고민, 식욕, 활동, 체온, 메모)
+2. 대화 내용에서 추가로 언급된 증상, 우려사항, 관찰 사항
+3. 대화 흐름에서 파악된 반려동물의 상태 변화나 추가 정보
+4. 체크표와 대화 내용이 일치하는지, 또는 대화에서 새로운 정보가 있는지
+
+평가 시 다음 형식으로 JSON 형식으로 응답해주세요:
 {
   "triage_level": "BLUE|GREEN|AMBER|RED",
   "recommended_actions": ["조치사항1", "조치사항2", "조치사항3"],
-  "health_check_summary": "자가검진 내용 요약"
+  "health_check_summary": "체크표와 대화 내용을 종합한 요약"
 }`;
+    } else {
+      // 일반 대화에서는 자연스러운 대화 형식 사용
+      prompt += `일반 대화에서는 자연스럽고 친근한 톤으로 응답해주세요.`;
     }
 
     return prompt;

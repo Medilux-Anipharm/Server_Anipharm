@@ -21,6 +21,7 @@ class HealthChatbotService {
       const healthCheck = await healthCheckService.createHealthCheck(
         petId, userId, concernType, appetite, activity, temperature, note
       );
+      console.log('건강상담모드 챗봇 시작 - 건강체크표 생성 완료:', healthCheck);
 
       return {
         healthCheckId: healthCheck.checkId
@@ -61,13 +62,27 @@ class HealthChatbotService {
    */
   async sendMessage(petId, userId, conversationType, healthCheckId, userMessage) {
     try {
+      // 0. healthCheckId 유효성 검사 (제공된 경우)
+      if (healthCheckId) {
+        try {
+          const healthCheck = await healthCheckService.getHealthCheckById(healthCheckId);
+          
+        } catch (error) {
+          // 건강체크표를 찾을 수 없는 경우 더 명확한 에러 메시지
+          if (error.message.includes('건강체크표를 찾을 수 없습니다')) {
+            throw new Error(`건강 체크표를 찾을 수 없습니다. healthCheckId: ${healthCheckId}가 존재하지 않거나 삭제되었을 수 있습니다.`);
+          }
+          throw error;
+        }
+      }
+
       // 1. 사용자 메시지 저장
       const lastMessage = await this._getLastMessageOrder(petId, userId, conversationType, healthCheckId);
       const userMessageRecord = await ChatMessage.create({
         petId,
         userId,
         conversationType,
-        healthCheckId,
+        healthCheckId: healthCheckId || null, // NULL로 명시적 변환
         role: 'user',
         content: userMessage,
         messageOrder: lastMessage + 1
@@ -165,8 +180,8 @@ class HealthChatbotService {
         pet, healthCheck, petContext, conversationHistory, true
       );
 
-      // 3. OpenAI 호출
-      const openaiResponse = await chatbotService.sendMessage(messages);
+      // 3. OpenAI 호출 (평가 모드이므로 JSON 형식 필수)
+      const openaiResponse = await chatbotService.sendMessage(messages, true);
       const assessmentText = openaiResponse.choices[0].message.content;
 
       // 4. JSON 파싱
@@ -264,6 +279,178 @@ class HealthChatbotService {
     return lastMessage ? lastMessage.messageOrder : 0;
   }
 
+
+  /**
+   * 대화 스크립트 생성
+   * @param {number} petId - 반려동물 ID
+   * @param {number} userId - 사용자 ID
+   * @param {string} conversationType - 상담 유형
+   * @param {number|null} healthCheckId - 건강 체크표 ID (건강상태 상담인 경우)
+   * @returns {Promise<object>} 대화 스크립트
+   */
+  async getConversationScript(petId, userId, conversationType, healthCheckId = null) {
+    try {
+      // 1. 반려동물 정보 조회
+      const pet = await petService.getPetById(petId);
+      
+      // 2. 대화 기록 조회
+      const where = {
+        petId,
+        userId,
+        conversationType
+      };
+      
+      if (healthCheckId) {
+        where.healthCheckId = healthCheckId;
+      }
+
+      const messages = await ChatMessage.findAll({
+        where,
+        order: [['message_order', 'ASC'], ['created_at', 'ASC']],
+        attributes: ['message_id', 'pet_id', 'user_id', 'health_check_id', 'conversation_type', 'role', 'content', 'message_order', 'created_at', 'updated_at'],
+        raw: false // Sequelize 인스턴스로 반환 (createdAt 자동 변환)
+      });
+
+      if (messages.length === 0) {
+        throw new Error('대화 기록이 없습니다.');
+      }
+
+      // 3. 스크립트 포맷팅
+      const scriptLines = [];
+      const conversationTypeLabel = conversationType === 'health_status' ? '건강상태 상담' : '케어 관리 상담';
+      
+      // 헤더 정보
+      scriptLines.push(`=== ${pet.name} ${conversationTypeLabel} 대화 스크립트 ===`);
+      
+      // 안전한 날짜 포맷팅 함수
+      const formatDate = (date) => {
+        if (!date) return '날짜 정보 없음';
+        const dateObj = date instanceof Date ? date : new Date(date);
+        if (isNaN(dateObj.getTime())) return '날짜 정보 없음';
+        return dateObj.toLocaleString('ko-KR');
+      };
+      
+      const formatDateTime = (date) => {
+        if (!date) return '날짜 정보 없음';
+        const dateObj = date instanceof Date ? date : new Date(date);
+        if (isNaN(dateObj.getTime())) return '날짜 정보 없음';
+        return dateObj.toLocaleString('ko-KR', { 
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      };
+      
+      const firstMsg = messages[0];
+      const lastMsg = messages[messages.length - 1];
+      
+      scriptLines.push(`상담 시작: ${formatDate(firstMsg?.createdAt || firstMsg?.created_at)}`);
+      scriptLines.push(`상담 종료: ${formatDate(lastMsg?.createdAt || lastMsg?.created_at)}`);
+      scriptLines.push(`총 메시지 수: ${messages.length}개`);
+      scriptLines.push('');
+
+      // 대화 내용
+      messages.forEach((msg, index) => {
+        const roleLabel = msg.role === 'user' ? '사용자' : '챗봇';
+        const createdAt = msg.createdAt || msg.created_at;
+        const time = formatDateTime(createdAt);
+        
+        scriptLines.push(`[${index + 1}] ${roleLabel} (${time})`);
+        scriptLines.push(msg.content || '');
+        scriptLines.push('');
+      });
+
+      const script = scriptLines.join('\n');
+
+      return {
+        petId,
+        petName: pet.name,
+        conversationType,
+        conversationTypeLabel,
+        healthCheckId,
+        messageCount: messages.length,
+        startTime: firstMsg?.createdAt || firstMsg?.created_at,
+        endTime: lastMsg?.createdAt || lastMsg?.created_at,
+        script,
+        messages: messages.map(msg => ({
+          messageId: msg.messageId,
+          role: msg.role,
+          roleLabel: msg.role === 'user' ? '사용자' : '챗봇',
+          content: msg.content,
+          messageOrder: msg.messageOrder,
+          createdAt: msg.createdAt || msg.created_at
+        }))
+      };
+    } catch (error) {
+      console.error('대화 스크립트 생성 오류:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 대화 종료 처리
+   * @param {number} petId - 반려동물 ID
+   * @param {number} userId - 사용자 ID
+   * @param {string} conversationType - 상담 유형
+   * @param {number|null} healthCheckId - 건강 체크표 ID (건강상태 상담인 경우)
+   * @returns {Promise<object>} 종료 정보 및 대화 요약
+   */
+  async endConversation(petId, userId, conversationType, healthCheckId = null) {
+    try {
+      // 1. 대화 기록 조회
+      const where = {
+        petId,
+        userId,
+        conversationType
+      };
+      
+      if (healthCheckId) {
+        where.healthCheckId = healthCheckId;
+      }
+
+      const messages = await ChatMessage.findAll({
+        where,
+        order: [['message_order', 'ASC'], ['created_at', 'ASC']]
+      });
+
+      if (messages.length === 0) {
+        throw new Error('대화 기록이 없습니다.');
+      }
+
+      // 2. 대화 요약 정보 생성
+      const firstMsg = messages[0];
+      const lastMsg = messages[messages.length - 1];
+      const userMessages = messages.filter(msg => msg.role === 'user');
+      const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+
+      // 3. 반려동물 정보 조회
+      const pet = await petService.getPetById(petId);
+
+      return {
+        petId,
+        petName: pet.name,
+        conversationType,
+        conversationTypeLabel: conversationType === 'health_status' ? '건강상태 상담' : '케어 관리 상담',
+        healthCheckId,
+        messageCount: messages.length,
+        userMessageCount: userMessages.length,
+        assistantMessageCount: assistantMessages.length,
+        startTime: firstMsg?.createdAt || firstMsg?.created_at,
+        endTime: new Date(), // 종료 시점
+        duration: Math.round((new Date() - new Date(firstMsg?.createdAt || firstMsg?.created_at)) / 1000 / 60), // 분 단위
+        summary: {
+          firstUserMessage: userMessages[0]?.content || null,
+          lastAssistantMessage: assistantMessages[assistantMessages.length - 1]?.content || null
+        }
+      };
+    } catch (error) {
+      console.error('대화 종료 처리 오류:', error);
+      throw error;
+    }
+  }
 
   /**
    * 평가 결과 검증

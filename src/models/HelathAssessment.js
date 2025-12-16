@@ -1,6 +1,6 @@
 //LLM 판단결과 챗봇 결과
 const { DataTypes } = require("sequelize");
-const TRIAGE_LEVEL = require("../constants/HealthCheck");
+const { TRIAGE_LEVEL } = require("../constants/HealthCheck");
 
 module.exports = (sequelize) => {
     const HealthAssessment = sequelize.define("HealthAssessment", {
@@ -20,7 +20,7 @@ module.exports = (sequelize) => {
             }
         },
         triageLevel: {
-            type: DataTypes.ENUM(...Object.values(TRIAGE_LEVEL)),
+            type: DataTypes.ENUM(Object.values(TRIAGE_LEVEL)),
             allowNull: false,
             field: 'triage_level'
         },

@@ -1,17 +1,49 @@
 const express = require('express');
 const router = express.Router();
+const healthRecordController = require('../controllers/healthRecordController');
+const { authenticate } = require('../middleware/auth');
 
-// TODO: 헬스 다이어리 관련 라우트 구현
-// GET /api/health/records - 건강 기록 조회
-// POST /api/health/records - 건강 기록 등록
-// GET /api/health/reports - 건강 레포트 조회
-// GET /api/health/scores - 건강 점수 조회
-// GET /api/health/reminders - 리마인더 조회
-// POST /api/health/reminders - 리마인더 등록
+/**
+ * 건강 기록 생성
+ * POST /api/health/records
+ */
+router.post('/records', authenticate, healthRecordController.createHealthRecord);
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Health routes' });
-});
+/**
+ * 건강 기록 수정
+ * PUT /api/health/records/:recordId
+ */
+router.put('/records/:recordId', authenticate, healthRecordController.updateHealthRecord);
+
+/**
+ * 건강 기록 삭제
+ * DELETE /api/health/records/:recordId
+ */
+router.delete('/records/:recordId', authenticate, healthRecordController.deleteHealthRecord);
+
+/**
+ * 배변 사진 저장/업데이트
+ * PUT /api/health/records/:recordId/feces-photo
+ */
+router.put('/records/:recordId/feces-photo', authenticate, healthRecordController.saveFecesPhoto);
+
+/**
+ * 증상 사진 추가
+ * POST /api/health/records/:recordId/symptom-photos
+ */
+router.post('/records/:recordId/symptom-photos', authenticate, healthRecordController.addSymptomPhoto);
+
+/**
+ * 증상 사진 삭제
+ * DELETE /api/health/records/:recordId/symptom-photos
+ */
+router.delete('/records/:recordId/symptom-photos', authenticate, healthRecordController.removeSymptomPhoto);
+
+/**
+ * 증상 사진 전체 교체
+ * PUT /api/health/records/:recordId/symptom-photos
+ */
+router.put('/records/:recordId/symptom-photos', authenticate, healthRecordController.updateSymptomPhotos);
 
 module.exports = router;
 

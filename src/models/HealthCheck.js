@@ -33,14 +33,20 @@ module.exports = (sequelize) => {
             }
         },
         concernType: {
-            type: DataTypes.STRING(50),
+            type: DataTypes.JSONB,
             allowNull: false,
             field: 'concern_type',
             validate: {
-                isIn: [Object.values(CONCERNS)],
                 isValid(value) {
                     if (!Array.isArray(value) || value.length < 1 || value.length > 5) {
                         throw new Error('건강고민은 1~5개여야 합니다');
+                    }
+                    // 배열의 각 값이 유효한 concern인지 확인
+                    const validConcerns = Object.values(CONCERNS);
+                    for (const concern of value) {
+                        if (!validConcerns.includes(concern)) {
+                            throw new Error(`유효하지 않은 건강 고민입니다: ${concern}`);
+                        }
                     }
                 }
             }

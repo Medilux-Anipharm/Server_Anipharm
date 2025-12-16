@@ -90,8 +90,7 @@ class PharmacyService {
             website: website && typeof website === 'string' ? website.trim() : website,
             latitude: latitude,
             longitude: longitude,
-            is24h: this._check24Hours(nameTrimmed, operatingHours) || false,
-            isEmergency: this._checkEmergency(nameTrimmed) || false
+        
           };
 
           // 최종 검증 후 추가
@@ -107,7 +106,7 @@ class PharmacyService {
 
             // DB에 bulk insert
             await this.Pharmacy.bulkCreate(results, {
-              updateOnDuplicate: ['name', 'address', 'phone', 'operatingHours', 'website', 'latitude', 'longitude', 'is24h', 'isEmergency']
+              updateOnDuplicate: ['name', 'address', 'phone', 'operatingHours', 'website', 'latitude', 'longitude']
             });
 
             console.log('동물약국 데이터 저장 완료!');

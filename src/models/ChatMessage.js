@@ -14,10 +14,8 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: true,
       field: 'health_check_id',
-      references: {
-        model: 'health_checks',
-        key: 'check_id'
-      },
+      // references 제거: healthCheckId가 NULL일 수 있고, 케어 관리 상담에는 health_check가 없음
+      // 외래키 제약조건은 데이터베이스 레벨에서 제거해야 함
       comment: '건강상태 상담 시 연결 (케어 관리 상담은 NULL)'
     },
     petId: {
