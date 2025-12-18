@@ -44,11 +44,14 @@ const corsOptions = {
     // 프로덕션에서는 허용된 origin만
     const allowedOrigins = [
       'http://localhost:8081',  // React Native Web
+      'http://localhost:19006', // Expo Web
       'http://localhost:3000',
       'http://127.0.0.1:8081',
+      'http://127.0.0.1:19006', // Expo Web
       'http://127.0.0.1:3000',
       'http://192.168.0.53:8081',  // 모바일에서 접근
       'http://192.168.0.57:8081',  // 현재 사용 중인 IP
+      'http://192.168.0.57:19006', // Expo Web
       'http://192.168.0.57:3000'   // 백엔드 서버
     ];
     
@@ -130,8 +133,8 @@ const startServer = async () => {
       logger.info('데이터베이스 동기화 완료');
     }
 
-    app.listen(PORT, () => {
-      logger.info(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+    app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`서버가 포트 ${PORT}에서 실행 중입니다. (0.0.0.0:${PORT})`);
     });
   } catch (error) {
     logger.error('서버 시작 실패:', error);
