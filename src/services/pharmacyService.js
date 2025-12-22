@@ -155,8 +155,8 @@ class PharmacyService {
     try {
       // 모든 약국 데이터를 가져온 후 JavaScript에서 거리 계산 및 필터링
       const allPharmacies = await this.Pharmacy.findAll({
-        attributes: ['pharmacyId', 'name', 'phone', 'address', 'operatingHours', 'website',
-          'latitude', 'longitude', 'is24h', 'isEmergency', 'ratingAverage', 'reviewCount']
+        attributes: ['pharmacyId', 'name', 'phone', 'address', 'addressDetail', 'operatingHours', 'website',
+          'latitude', 'longitude', 'ratingAverage', 'reviewCount']
       });
 
       // 기준 위치
@@ -182,10 +182,13 @@ class PharmacyService {
 
           // 반경 내에 있는지 확인
           if (distanceKm <= radiusKm) {
-            return {
-              ...pharmacy.toJSON(),
-              distance: distanceKm // km 단위로 저장
-            };
+            const pharmacyData = pharmacy.toJSON();
+            // 운영시간 기반으로 24시간 여부 계산
+            pharmacyData.is24h = this._check24Hours(pharmacy.name, pharmacy.operatingHours);
+            pharmacyData.isEmergency = this._checkEmergency(pharmacy.name);
+            pharmacyData.distance = distanceKm; // km 단위로 저장
+            
+            return pharmacyData;
           }
           return null;
         })
@@ -279,23 +282,30 @@ class PharmacyService {
       const limitedPharmacies = pharmacies.slice(0, maxResults);
 
       // 네이버 지도 마커 형식으로 변환
-      const markers = limitedPharmacies.map(pharmacy => ({
-        id: pharmacy.pharmacyId,
-        position: {
-          lat: parseFloat(pharmacy.latitude),
-          lng: parseFloat(pharmacy.longitude)
-        },
-        title: pharmacy.name,
-        address: pharmacy.address,
-        phone: pharmacy.phone,
-        operatingHours: pharmacy.operatingHours,
-        website: pharmacy.website,
-        is24h: pharmacy.is24h,
-        isEmergency: pharmacy.isEmergency,
-        rating: pharmacy.ratingAverage,
-        reviewCount: pharmacy.reviewCount,
-        distance: pharmacy.distance // 거리 정보 추가
-      }));
+      const markers = limitedPharmacies.map(pharmacy => {
+        // 운영시간 기반으로 24시간 여부 계산
+        const is24h = this._check24Hours(pharmacy.name, pharmacy.operatingHours);
+        const isEmergency = this._checkEmergency(pharmacy.name);
+        
+        return {
+          id: pharmacy.pharmacyId,
+          position: {
+            lat: parseFloat(pharmacy.latitude),
+            lng: parseFloat(pharmacy.longitude)
+          },
+          title: pharmacy.name,
+          address: pharmacy.address,
+          addressDetail: pharmacy.addressDetail,
+          phone: pharmacy.phone,
+          operatingHours: pharmacy.operatingHours,
+          website: pharmacy.website,
+          is24h: is24h,
+          isEmergency: isEmergency,
+          rating: pharmacy.ratingAverage,
+          reviewCount: pharmacy.reviewCount,
+          distance: pharmacy.distance // 거리 정보 추가
+        };
+      });
 
       return markers;
     } catch (error) {
@@ -309,12 +319,19 @@ class PharmacyService {
    */
   async get24HourPharmacies() {
     try {
-      const pharmacies = await this.Pharmacy.findAll({
-        where: { is24h: true },
+      // 모든 약국을 가져온 후 운영시간 기반으로 필터링
+      const allPharmacies = await this.Pharmacy.findAll({
+        attributes: ['pharmacyId', 'name', 'phone', 'address', 'addressDetail', 'operatingHours', 'website',
+          'latitude', 'longitude', 'ratingAverage', 'reviewCount'],
         order: [['ratingAverage', 'DESC']]
       });
 
-      return pharmacies;
+      // 운영시간 기반으로 24시간 약국 필터링
+      const pharmacies24h = allPharmacies.filter(pharmacy => 
+        this._check24Hours(pharmacy.name, pharmacy.operatingHours)
+      );
+
+      return pharmacies24h;
     } catch (error) {
       console.error('24시간 약국 조회 오류:', error);
       throw error;

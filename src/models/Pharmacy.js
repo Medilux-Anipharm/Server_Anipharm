@@ -44,21 +44,6 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(11, 8),
       allowNull: false
     },
-    isLateNight: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: 'is_late_night'
-    },
-    is24h: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: 'is_24h'
-    },
-    isEmergency: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: 'is_emergency'
-    },
     ratingAverage: {
       type: DataTypes.DECIMAL(3, 2),
       defaultValue: 0.00,
