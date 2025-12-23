@@ -42,6 +42,7 @@ temp/
 # Database
 *.sqlite
 *.db
+# data/medications/*
 
 # Coverage
 coverage/
