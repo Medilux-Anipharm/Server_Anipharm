@@ -15,6 +15,7 @@ const userRoutes = require('./routes/users');
 const petRoutes = require('./routes/pets');
 const pharmacyRoutes = require('./routes/pharmacies');
 const hospitalRoutes = require('./routes/hospitals');
+const medicationRoutes = require('./routes/medications');
 const chatbotRoutes = require('./routes/chatbot');
 const healthChatbotRoutes = require('./routes/healthChatbot');
 const healthRoutes = require('./routes/health');
@@ -47,6 +48,7 @@ const corsOptions = {
       'http://localhost:19006', // Expo Web
       'http://localhost:3000',
       'http://127.0.0.1:8081',
+      'http://127.0.0.1:3000',
       'http://127.0.0.1:19006', // Expo Web
       'http://127.0.0.1:3000',
       'http://192.168.0.53:8081',  // 모바일에서 접근
@@ -100,6 +102,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/pharmacies', pharmacyRoutes);
 app.use('/api/hospitals', hospitalRoutes);
+app.use('/api/medications', medicationRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/chatbot', healthChatbotRoutes);
 app.use('/api/health', healthRoutes);

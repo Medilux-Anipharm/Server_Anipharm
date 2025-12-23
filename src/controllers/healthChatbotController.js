@@ -101,12 +101,22 @@ class HealthChatbotController {
         });
       }
 
+      // 위치 정보 추출 (선택적)
+      const userLocation = req.body.location ? {
+        latitude: parseFloat(req.body.location.latitude),
+        longitude: parseFloat(req.body.location.longitude)
+      } : null;
+      
+      console.log('[컨트롤러] 위치 정보 수신:', userLocation);
+      console.log('[컨트롤러] 요청 body:', JSON.stringify(req.body, null, 2));
+
       const response = await healthChatbotService.sendMessage(
         petId,
         userId,
         conversationType,
         healthCheckId || null,
-        message
+        message,
+        userLocation
       );
 
       logger.info(`Chat message sent: petId=${petId}, conversationType=${conversationType}`);

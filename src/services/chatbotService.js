@@ -82,13 +82,17 @@ class ChatbotService {
    * @param {boolean} isAssessment - 평가 모드 여부
    * @returns {Array} 프롬프트 메시지 배열
    */
-  buildHealthStatusPrompt(pet, healthCheck, petContext, conversationHistory = [], isAssessment = false) {
+  async buildHealthStatusPrompt(pet, healthCheck, petContext, conversationHistory = [], isAssessment = false) {
     const messages = [];
+    let medicationContext = '';
+    
+    // RAG: 건강 고민 기반 약제품 검색 (healthChatbotService에서 동적으로 추가하므로 여기서는 제거)
+    // 약제품 정보는 healthChatbotService에서 사용자 메시지와 함께 추가됨
 
     // 시스템 프롬프트
     messages.push({
       role: 'system',
-      content: this._buildSystemPrompt(pet, healthCheck, petContext, isAssessment)
+      content: this._buildSystemPrompt(pet, healthCheck, petContext, isAssessment) + medicationContext
     });
 
     // 대화 기록 추가
@@ -190,10 +194,23 @@ ${isAssessment ? '**중요: 평가 응답은 반드시 JSON 형식으로 제공�
     }
 
     prompt += `안전 규칙:
-- 약물 추천 금지
 - 침습적 처치 금지
 - 응급 증상 발견 시 즉시 병원 내원 안내
 - 정보 제공용으로만 활용됨
+
+약제품 정보 제공 시 (RAG 서비스):
+- 약제품 정보가 RAG를 통해 제공되는 경우에만, 해당 약제품에 대한 정보를 제공할 수 있습니다.
+- RAG로 제공된 약제품 정보를 바탕으로 사용자에게 도움이 될 수 있는 정보를 제공할 수 있습니다.
+- 하지만 반드시 "수의사와 상의 후 사용하세요"라는 안내를 포함하세요.
+- 처방전이 필요한 약물인 경우 명확히 표시하세요.
+- RAG로 제공되지 않은 약제품은 추천하지 마세요.
+
+주변 동물병원/약국 정보 제공 시:
+- 시스템 프롬프트에 "주변 동물병원/약국 정보" 섹션이 포함되어 있는 경우, 사용자가 병원이나 약국에 대한 질문을 하면 반드시 해당 정보를 참고하여 답변해야 합니다.
+- 사용자가 "근처 병원 알려줘", "주변 약국", "가까운 병원", "동물병원 찾아줘", "근처 동물병원", "동물약국 알려줘", "약국 찾아줘" 등 병원/약국 관련 질문을 하면 (단어가 "병원", "약국", "동물병원", "동물약국" 중 하나라도 포함되면), 위의 주변 병원/약국 정보를 반드시 포함하여 구체적으로 답변해야 합니다.
+- 각 병원/약국의 이름, 주소, 전화번호, 거리를 반드시 포함하여 답변하세요.
+- 병원/약국 정보가 제공되었는데도 "찾을 수 없습니다"라고 답변하지 마세요. 반드시 제공된 정보를 사용하여 답변하세요.
+- "병원", "동물병원", "약국", "동물약국" 등 어떤 표현을 사용하든 모두 동일하게 처리하세요.
 
 `;
 
@@ -220,6 +237,8 @@ ${isAssessment ? '**중요: 평가 응답은 반드시 JSON 형식으로 제공�
 
     return prompt;
   }
+
+
 }
 
 module.exports = new ChatbotService();

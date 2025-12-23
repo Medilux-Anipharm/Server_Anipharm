@@ -60,7 +60,7 @@ class HealthChatbotService {
    * @param {string} userMessage - 사용자 메시지
    * @returns {Promise<object>} 챗봇 응답
    */
-  async sendMessage(petId, userId, conversationType, healthCheckId, userMessage) {
+  async sendMessage(petId, userId, conversationType, healthCheckId, userMessage, userLocation = null) {
     try {
       // 0. healthCheckId 유효성 검사 (제공된 경우)
       if (healthCheckId) {
@@ -105,24 +105,222 @@ class HealthChatbotService {
 
       // 5. 프롬프트 구성 (chatbotService 사용)
       let messages;
+
+      // RAG: 사용자 메시지에서 약제품 관련 키워드 추출 및 검색
+      const medicationService = require('./medicationService');
+      const medicationKeywords = medicationService.extractMedicationKeywords(userMessage);
+      let dynamicMedicationContext = '';
+      
+      // 증상 키워드 추출 (약제품 키워드가 없어도 증상 키워드로 검색)
+      const symptomKeywords = this._extractSymptomKeywords(userMessage);
+      console.log('추출된 약제 키워드:', medicationKeywords);
+      console.log('추출된 증상 키워드:', symptomKeywords);
+      
+      // 증상 키워드가 있으면 증상 기반 검색, 없으면 약제품 키워드로 검색
+      const searchKeywords = symptomKeywords.length > 0 ? symptomKeywords : medicationKeywords;
+      
+      if (searchKeywords.length > 0) {
+        for (const keyword of searchKeywords) {
+          console.log(`약제품 검색 시도: ${keyword}, 종류: ${pet.species}`);
+          const medications = await medicationService.searchByKeyword(keyword, pet.species, 3);
+          console.log(`검색 결과: ${medications.length}개 약제품 발견`);
+          
+          if (medications.length > 0) {
+            dynamicMedicationContext = medicationService.formatMedicationsForChat(medications);
+            console.log('약제품 정보 추가됨:', dynamicMedicationContext.substring(0, 100) + '...');
+            break;
+          }
+        }
+      }
+      
+      // 약제품 정보가 없고 건강 고민이 있으면 건강 고민 기반으로도 검색 시도
+      if (!dynamicMedicationContext && healthCheck && healthCheck.concernType) {
+        console.log(`건강 고민 기반 약제품 검색: ${healthCheck.concernType}`);
+        const medications = await medicationService.recommendByHealthConcern(
+          healthCheck.concernType,
+          pet.species,
+          3
+        );
+        if (medications.length > 0) {
+          dynamicMedicationContext = medicationService.formatMedicationsForChat(medications);
+          console.log('건강 고민 기반 약제품 정보 추가됨');
+        }
+      }
+
+      // 위치 기반 동물병원/약국 정보 수집
+      let locationContext = '';
+      // 병원/약국 관련 키워드 확인 (더 포괄적으로)
+      const needsLocationInfo = /병원|약국|동물병원|동물약국|근처|주변|가까운|찾아|알려|추천|위치/.test(userMessage);
+      
+      console.log(`[위치 기반 검색] 위치 정보 확인:`, userLocation);
+      console.log(`[위치 기반 검색] 병원/약국 관련 질문 여부:`, needsLocationInfo);
+      console.log(`[위치 기반 검색] 사용자 메시지:`, userMessage);
+      
+      if (userLocation && userLocation.latitude && userLocation.longitude) {
+        console.log(`[위치 기반 검색] 사용자 위치: ${userLocation.latitude}, ${userLocation.longitude}`);
+        
+        try {
+          const pharmacyService = require('./pharmacyService');
+          const hospitalService = require('./hospitalService');
+          
+          // 주변 약국 검색 (5km 반경)
+          const nearbyPharmacies = await pharmacyService.findNearbyPharmacies(
+            userLocation.latitude,
+            userLocation.longitude,
+            5
+          );
+          console.log('chatbot 주변 약국 검색 결과:', nearbyPharmacies);
+          // 주변 병원 검색 (5km 반경)
+          const nearbyHospitals = await hospitalService.findNearbyHospitals(
+            userLocation.latitude,
+            userLocation.longitude,
+            5
+          );
+          
+          console.log(`[위치 기반 검색] 약국 ${nearbyPharmacies.length}개, 병원 ${nearbyHospitals.length}개 발견`);
+          
+          // 위치 정보 포맷팅
+          if (nearbyPharmacies.length > 0 || nearbyHospitals.length > 0) {
+            locationContext = '\n\n';
+            locationContext += '═══════════════════════════════════════════════════════════════\n';
+            locationContext += '📍 주변 동물병원/약국 정보 (반드시 확인 필수!)\n';
+            locationContext += '═══════════════════════════════════════════════════════════════\n';
+            locationContext += `현재 위치 기준 반경 5km 내 검색 결과\n\n`;
+            
+            if (nearbyHospitals.length > 0) {
+              locationContext += `🏥 주변 동물병원 (총 ${nearbyHospitals.length}개, 상위 3개):\n\n`;
+              nearbyHospitals.slice(0, 3).forEach((hospital, index) => {
+                locationContext += `${index + 1}. ${hospital.name}`;
+                if (hospital.is24h) locationContext += ' [24시간 운영]';
+                if (hospital.isEmergency) locationContext += ' [응급 진료]';
+                locationContext += `\n   📍 주소: ${hospital.address}`;
+                if (hospital.phone) locationContext += `\n   📞 전화번호: ${hospital.phone}`;
+                locationContext += `\n   📏 거리: 약 ${hospital.distance.toFixed(2)}km\n\n`;
+              });
+            } else {
+              locationContext += `🏥 주변 동물병원: 검색 결과 없음\n\n`;
+            }
+            
+            if (nearbyPharmacies.length > 0) {
+              locationContext += `💊 주변 동물약국 (총 ${nearbyPharmacies.length}개, 상위 3개):\n\n`;
+              nearbyPharmacies.slice(0, 3).forEach((pharmacy, index) => {
+                locationContext += `${index + 1}. ${pharmacy.name}`;
+                if (pharmacy.is24h) locationContext += ' [24시간 운영]';
+                if (pharmacy.isEmergency) locationContext += ' [응급 약국]';
+                locationContext += `\n   📍 주소: ${pharmacy.address}`;
+                if (pharmacy.phone) locationContext += `\n   📞 전화번호: ${pharmacy.phone}`;
+                locationContext += `\n   📏 거리: 약 ${pharmacy.distance.toFixed(2)}km\n\n`;
+              });
+            } else {
+              locationContext += `💊 주변 동물약국: 검색 결과 없음\n\n`;
+            }
+            
+            locationContext += '⚠️ 위 정보는 참고용이며, 실제 방문 전 전화로 운영시간을 확인하세요.\n';
+            locationContext += '═══════════════════════════════════════════════════════════════\n';
+          }
+        } catch (error) {
+          console.error('[위치 기반 검색] 오류:', error);
+          // 위치 검색 실패해도 계속 진행
+        }
+      }
+
       if (conversationType === 'health_status') {
-        messages = chatbotService.buildHealthStatusPrompt(
+        messages = await chatbotService.buildHealthStatusPrompt(
           pet, healthCheck, petContext, conversationHistory, false
         );
+        
+        // 약제품 정보가 있으면 별도의 assistant 메시지로 추가 (AI가 더 잘 인식하도록)
+        if (dynamicMedicationContext) {
+          console.log('[약제품 RAG] 약제품 정보를 프롬프트에 추가합니다.');
+          console.log('[약제품 RAG] 약제품 정보 길이:', dynamicMedicationContext.length);
+          console.log('[약제품 RAG] 약제품 정보 미리보기:', dynamicMedicationContext.substring(0, 200));
+          
+          // 시스템 프롬프트에 약제품 정보 추가
+          messages[0].content += dynamicMedicationContext;
+          messages[0].content += '\n\n**필수 지침: 위의 "RAG로 검색된 약제품 정보" 섹션을 반드시 확인하세요. 사용자가 약물에 대해 질문하거나 관련 증상을 언급한 경우, 위의 약제품 정보를 반드시 참고하여 구체적인 약제품 이름, 효능효과, 용법을 포함하여 답변해야 합니다. 약제품 정보가 있다면 반드시 언급하고 설명해야 합니다.';
+          
+          // 약제품 정보를 별도의 assistant 메시지로도 추가 (AI가 더 잘 인식하도록)
+          messages.push({
+            role: 'assistant',
+            content: `약제품 정보를 확인했습니다. ${dynamicMedicationContext.substring(0, 100)}... (전체 정보는 위 시스템 프롬프트 참조)`
+          });
+        } else {
+          console.log('[약제품 RAG] 약제품 정보가 없습니다.');
+        }
+        
+        // 위치 정보 추가
+        if (locationContext) {
+          console.log('[위치 정보] 주변 병원/약국 정보를 프롬프트에 추가합니다.');
+          messages[0].content += locationContext;
+          
+          if (locationContext.includes('주변 동물병원/약국 정보')) {
+            // 병원/약국 정보가 있는 경우
+            messages[0].content += '\n\n**필수 지침: 위의 "주변 동물병원/약국 정보" 섹션에 병원이나 약국 정보가 포함되어 있습니다. 사용자가 "근처 병원 알려줘", "주변 약국", "가까운 병원", "동물병원 찾아줘", "근처 동물병원", "동물약국 알려줘", "약국 찾아줘" 등 병원/약국에 대한 질문을 하면 (단어가 "병원", "약국", "동물병원", "동물약국" 중 하나라도 포함되면), 반드시 위의 주변 병원/약국 정보를 참고하여 구체적으로 답변해야 합니다. 각 병원/약국의 이름, 주소, 전화번호, 거리를 반드시 포함하여 답변하세요. 병원/약국 정보가 있다면 반드시 언급하고 설명해야 합니다. "찾을 수 없습니다"라고 답변하지 마세요.';
+          } else {
+            // 위치 정보가 없는 경우
+            messages[0].content += '\n\n**지침: 사용자가 병원/약국에 대한 질문을 했지만 위치 정보가 없어 주변 병원/약국을 찾을 수 없습니다. 사용자에게 위치 정보를 제공해달라고 안내하세요.';
+          }
+        }
+        
         // 사용자 메시지 추가
+        const userMessageWithContext = dynamicMedicationContext 
+          ? `${userMessage}\n\n**중요: 위의 시스템 프롬프트에 포함된 "RAG로 검색된 약제품 정보"를 반드시 확인하고, 해당 약제품 정보를 참고하여 구체적으로 답변해주세요. 약제품 이름, 효능효과, 용법을 반드시 포함하여 설명해주세요. 약제품 정보가 있다면 반드시 언급해야 합니다.`
+          : userMessage;
+        
         messages.push({
           role: 'user',
-          content: userMessage
+          content: userMessageWithContext
         });
+        
+        console.log('[약제품 RAG] 최종 프롬프트 메시지 수:', messages.length);
+        if (dynamicMedicationContext) {
+          console.log('[약제품 RAG] 시스템 프롬프트에 약제품 정보 포함됨');
+        }
       } else {
-        messages = chatbotService.buildCareManagementPrompt(
+        messages = await chatbotService.buildCareManagementPrompt(
           pet, healthCheck, petContext, conversationHistory
         );
+        
+        // 약제품 정보가 있으면 별도의 assistant 메시지로 추가 (AI가 더 잘 인식하도록)
+        if (dynamicMedicationContext) {
+          console.log('[약제품 RAG] 약제품 정보를 프롬프트에 추가합니다.');
+          console.log('[약제품 RAG] 약제품 정보 길이:', dynamicMedicationContext.length);
+          console.log('[약제품 RAG] 약제품 정보 미리보기:', dynamicMedicationContext.substring(0, 200));
+          
+          // 시스템 프롬프트에 약제품 정보 추가
+          messages[0].content += dynamicMedicationContext;
+          messages[0].content += '\n\n**필수 지침: 위의 "RAG로 검색된 약제품 정보" 섹션을 반드시 확인하세요. 사용자가 약물에 대해 질문하거나 관련 증상을 언급한 경우, 위의 약제품 정보를 반드시 참고하여 구체적인 약제품 이름, 효능효과, 용법을 포함하여 답변해야 합니다. 약제품 정보가 있다면 반드시 언급하고 설명해야 합니다.';
+          
+          // 약제품 정보를 별도의 assistant 메시지로도 추가 (AI가 더 잘 인식하도록)
+          messages.push({
+            role: 'assistant',
+            content: `약제품 정보를 확인했습니다. ${dynamicMedicationContext.substring(0, 100)}... (전체 정보는 위 시스템 프롬프트 참조)`
+          });
+        } else {
+          console.log('[약제품 RAG] 약제품 정보가 없습니다.');
+        }
+        
+        // 위치 정보 추가
+        if (locationContext) {
+          console.log('[위치 정보] 주변 병원/약국 정보를 프롬프트에 추가합니다.');
+          messages[0].content += locationContext;
+          messages[0].content += '\n\n**지침: 위의 주변 동물병원/약국 정보가 제공된 경우, 사용자가 병원이나 약국에 대한 질문을 하면 해당 정보를 참고하여 답변할 수 있습니다.';
+        }
+        
         // 사용자 메시지 추가
+        const userMessageWithContext = dynamicMedicationContext 
+          ? `${userMessage}\n\n**중요: 위의 시스템 프롬프트에 포함된 "RAG로 검색된 약제품 정보"를 반드시 확인하고, 해당 약제품 정보를 참고하여 구체적으로 답변해주세요. 약제품 이름, 효능효과, 용법을 반드시 포함하여 설명해주세요. 약제품 정보가 있다면 반드시 언급해야 합니다.`
+          : userMessage;
+        
         messages.push({
           role: 'user',
-          content: userMessage
+          content: userMessageWithContext
         });
+        
+        console.log('[약제품 RAG] 최종 프롬프트 메시지 수:', messages.length);
+        if (dynamicMedicationContext) {
+          console.log('[약제품 RAG] 시스템 프롬프트에 약제품 정보 포함됨');
+        }
       }
 
       // 6. OpenAI 호출
@@ -176,7 +374,7 @@ class HealthChatbotService {
       );
 
       // 2. 프롬프트 구성 (평가용, chatbotService 사용)
-      const messages = chatbotService.buildHealthStatusPrompt(
+      const messages = await chatbotService.buildHealthStatusPrompt(
         pet, healthCheck, petContext, conversationHistory, true
       );
 
@@ -277,6 +475,27 @@ class HealthChatbotService {
     });
 
     return lastMessage ? lastMessage.messageOrder : 0;
+  }
+
+  /**
+   * 사용자 메시지에서 증상/질병 키워드 추출
+   * @private
+   */
+  _extractSymptomKeywords(message) {
+    const symptomKeywords = [
+      '비듬', '가려움', '피부염', '알레르기', '발진', '피부',
+      '구토', '설사', '변비', '소화불량', '소화',
+      '기침', '재채기', '콧물', '코',
+      '무기력', '식욕부진', '체중감소', '식욕',
+      '다음', '소변', '배뇨', '요로',
+      '눈물', '결막염', '안구', '눈',
+      '치석', '구취', '잇몸', '치아', '구강',
+      '관절', '보행', '절뚝거림', '뼈',
+      '열', '체온', '발열',
+      '호흡', '숨', '호흡곤란'
+    ];
+
+    return symptomKeywords.filter(keyword => message.includes(keyword));
   }
 
 
