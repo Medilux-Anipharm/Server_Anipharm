@@ -221,6 +221,86 @@ class HealthChatbotController {
   }
 
   /**
+   * 대화 목록 조회
+   * GET /api/chatbot/conversations
+   */
+  async getConversationList(req, res) {
+    try {
+      const userId = req.user.userId;
+      const { petId, conversationType } = req.query;
+
+      if (!petId || !conversationType) {
+        return res.status(400).json({
+          success: false,
+          message: 'petId와 conversationType은 필수입니다.'
+        });
+      }
+
+      const conversations = await healthChatbotService.getConversationList(
+        parseInt(petId),
+        userId,
+        conversationType
+      );
+
+      logger.info(`Conversation list retrieved: petId=${petId}, conversationType=${conversationType}, count=${conversations.length}`);
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          conversations
+        },
+        message: '대화 목록을 조회했습니다.'
+      });
+    } catch (error) {
+      logger.error('Error getting conversation list:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || '대화 목록 조회에 실패했습니다.'
+      });
+    }
+  }
+
+  /**
+   * 보관함 조회
+   * GET /api/chatbot/inbox
+   */
+  async getInboxList(req, res) {
+    try {
+      const userId = req.user.userId;
+      const { petId, conversationType } = req.query;
+
+      if (!petId || !conversationType) {
+        return res.status(400).json({
+          success: false,
+          message: 'petId와 conversationType은 필수입니다.'
+        });
+      }
+
+      const conversations = await healthChatbotService.getInboxList(
+        parseInt(petId),
+        userId,
+        conversationType
+      );
+
+      logger.info(`Inbox list retrieved: petId=${petId}, conversationType=${conversationType}, count=${conversations.length}`);
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          conversations
+        },
+        message: '보관함 목록을 조회했습니다.'
+      });
+    } catch (error) {
+      logger.error('Error getting inbox list:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || '보관함 조회에 실패했습니다.'
+      });
+    }
+  }
+
+  /**
    * 대화 스크립트 조회
    * GET /api/chatbot/conversation/script
    */

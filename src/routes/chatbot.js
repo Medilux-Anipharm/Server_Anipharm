@@ -5,12 +5,13 @@ const router = express.Router();
 // POST /api/chatbot/conversations - 대화 시작
 // GET /api/chatbot/conversations/:conversationId - 대화 조회
 // POST /api/chatbot/conversations/:conversationId/messages - 메시지 전송
-// GET /api/chatbot/summaries - 대화 정리함 조회
+// GET /api/chatbot/summaries - 대화 보관함 조회
 // POST /api/chatbot/summaries - 대화 요약 저장
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Chatbot routes' });
-});
+// 기본 라우트는 healthChatbotRoutes에서 처리하므로 주석 처리
+// router.get('/', (req, res) => {
+//   res.json({ message: 'Chatbot routes' });
+// });
 
 module.exports = router;
 

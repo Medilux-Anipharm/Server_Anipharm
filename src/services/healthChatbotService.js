@@ -1,6 +1,7 @@
 // 헬스챗봇 관련 서비스
 // 건강상담모드 / 케어관리모드 
-const { Pet, HealthCheck, ChatMessage, HealthRecord } = require('../models');
+const { Pet, HealthCheck, ChatMessage, HealthRecord, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const petService = require('./petService');
 const healthCheckService = require('./healthCheckService');
 const healthRecordService = require('./HealthRecord');
@@ -505,9 +506,10 @@ class HealthChatbotService {
    * @param {number} userId - 사용자 ID
    * @param {string} conversationType - 상담 유형
    * @param {number|null} healthCheckId - 건강 체크표 ID (건강상태 상담인 경우)
+   * @param {number|null} conversationId - 대화 ID (케어 관리 상담인 경우, 첫 메시지 ID)
    * @returns {Promise<object>} 대화 스크립트
    */
-  async getConversationScript(petId, userId, conversationType, healthCheckId = null) {
+  async getConversationScript(petId, userId, conversationType, healthCheckId = null, conversationId = null) {
     try {
       // 1. 반려동물 정보 조회
       const pet = await petService.getPetById(petId);
@@ -521,6 +523,27 @@ class HealthChatbotService {
       
       if (healthCheckId) {
         where.healthCheckId = healthCheckId;
+      } else if (conversationId) {
+        // 케어 관리 상담인 경우 conversationId로 첫 메시지 찾기
+        // conversationId가 첫 메시지 ID이므로, 해당 메시지의 시간 범위로 필터링
+        const firstMessage = await ChatMessage.findOne({
+          where: {
+            messageId: conversationId,
+            petId,
+            userId,
+            conversationType
+          }
+        });
+        
+        if (firstMessage) {
+          // 첫 메시지 시간 기준으로 30분 이내의 메시지들 조회
+          const startTime = new Date(firstMessage.createdAt || firstMessage.created_at);
+          const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30분 후
+          
+          where.createdAt = {
+            [Op.between]: [startTime, endTime]
+          };
+        }
       }
 
       const messages = await ChatMessage.findAll({
@@ -667,6 +690,124 @@ class HealthChatbotService {
       };
     } catch (error) {
       console.error('대화 종료 처리 오류:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 대화 목록 조회
+   * @param {number} petId - 반려동물 ID
+   * @param {number} userId - 사용자 ID
+   * @param {string} conversationType - 상담 유형
+   * @returns {Promise<Array>} 대화 목록
+   */
+  async getConversationList(petId, userId, conversationType) {
+    try {
+      const where = {
+        petId,
+        userId,
+        conversationType
+      };
+
+      // 모든 메시지 조회
+      const messages = await ChatMessage.findAll({
+        where,
+        order: [['created_at', 'ASC']],
+        attributes: ['message_id', 'pet_id', 'user_id', 'health_check_id', 'conversation_type', 'role', 'content', 'message_order', 'created_at']
+      });
+
+      if (messages.length === 0) {
+        return [];
+      }
+
+      // 메시지를 시간 범위로 그룹핑 (30분 간격)
+      const conversations = [];
+      let currentGroup = [];
+      let groupStartTime = null;
+      const GROUP_INTERVAL_MS = 30 * 60 * 1000; // 30분
+
+      for (const msg of messages) {
+        const msgTime = new Date(msg.created_at || msg.createdAt);
+        
+        if (!groupStartTime || (msgTime - groupStartTime) > GROUP_INTERVAL_MS) {
+          // 새 그룹 시작
+          if (currentGroup.length > 0) {
+            conversations.push(this._createConversationSummary(currentGroup, petId, conversationType));
+          }
+          currentGroup = [msg];
+          groupStartTime = msgTime;
+        } else {
+          // 같은 그룹에 추가
+          currentGroup.push(msg);
+        }
+      }
+
+      // 마지막 그룹 추가
+      if (currentGroup.length > 0) {
+        conversations.push(this._createConversationSummary(currentGroup, petId, conversationType));
+      }
+
+      // 최신순 정렬
+      return conversations.sort((a, b) => new Date(b.endTime) - new Date(a.endTime));
+    } catch (error) {
+      console.error('대화 목록 조회 오류:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 대화 요약 생성 (내부 함수)
+   */
+  _createConversationSummary(messages, petId, conversationType) {
+    const firstMsg = messages[0];
+    const lastMsg = messages[messages.length - 1];
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+
+    // healthCheckId 추출 (건강상태 상담인 경우)
+    const healthCheckId = firstMsg.health_check_id || firstMsg.healthCheckId || null;
+
+    // conversationId 생성 (healthCheckId가 있으면 사용, 없으면 첫 메시지 ID 사용)
+    const conversationId = healthCheckId || firstMsg.message_id;
+
+    return {
+      conversationId,
+      petId,
+      conversationType,
+      conversationTypeLabel: conversationType === 'health_status' ? '건강상태 상담' : '케어 관리 상담',
+      healthCheckId,
+      messageCount: messages.length,
+      userMessageCount: userMessages.length,
+      assistantMessageCount: assistantMessages.length,
+      startTime: firstMsg.created_at || firstMsg.createdAt,
+      endTime: lastMsg.created_at || lastMsg.createdAt,
+      duration: Math.round((new Date(lastMsg.created_at || lastMsg.createdAt) - new Date(firstMsg.created_at || firstMsg.createdAt)) / 1000 / 60), // 분 단위
+      summary: {
+        firstUserMessage: userMessages[0]?.content || null,
+        lastAssistantMessage: assistantMessages[assistantMessages.length - 1]?.content || null
+      }
+    };
+  }
+
+  /**
+   * 보관함 조회 (보관된 대화 목록)
+   * @param {number} petId - 반려동물 ID
+   * @param {number} userId - 사용자 ID
+   * @param {string} conversationType - 상담 유형
+   * @returns {Promise<Array>} 보관된 대화 목록
+   */
+  async getInboxList(petId, userId, conversationType) {
+    try {
+      // 현재는 모든 대화를 반환 (나중에 isArchived 플래그 추가 가능)
+      // 실제로는 endConversation에서 saveReport: true일 때 표시를 해야 함
+      // 일단 모든 대화를 반환하되, 최신순으로 정렬
+      const conversations = await this.getConversationList(petId, userId, conversationType);
+      
+      // 보관된 대화만 필터링 (현재는 모든 대화 반환)
+      // TODO: 나중에 isArchived 필드 추가하여 필터링
+      return conversations;
+    } catch (error) {
+      console.error('보관함 조회 오류:', error);
       throw error;
     }
   }

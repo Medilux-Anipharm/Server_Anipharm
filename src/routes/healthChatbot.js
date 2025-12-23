@@ -39,5 +39,17 @@ router.post('/conversation/end', authenticate, healthChatbotController.endConver
  */
 router.get('/conversation/script', authenticate, healthChatbotController.getConversationScript);
 
+/**
+ * 대화 목록 조회
+ * GET /api/chatbot/conversations
+ */
+router.get('/conversations', authenticate, healthChatbotController.getConversationList);
+
+/**
+ * 보관함 조회
+ * GET /api/chatbot/inbox
+ */
+router.get('/inbox', authenticate, healthChatbotController.getInboxList);
+
 module.exports = router;
 
