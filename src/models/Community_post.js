@@ -10,7 +10,7 @@ module.exports = (sequelize) => {
         },
         userId : {
             type: DataTypes.BIGINT,
-            primaryKey: true,
+            allowNull: false,
             field:'user_id',
             references: {
                 model: 'users',
@@ -89,8 +89,8 @@ module.exports = (sequelize) => {
     CommunityPost.associate = (models) => {
         CommunityPost.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
         CommunityPost.hasMany(models.PostImage, { foreignKey: 'post_id', as: 'images' });
-        CommunityPost.hasMany(models.PostLike, { foreignKey: 'post_id', as: 'likes' });
         CommunityPost.hasMany(models.PostComment, { foreignKey: 'post_id', as: 'comments' });
+        CommunityPost.hasMany(models.PostLike, { foreignKey: 'post_id', as: 'likes' });
     };
 
     return CommunityPost;

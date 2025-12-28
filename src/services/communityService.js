@@ -14,8 +14,9 @@
  * 댓글 목록 조회(마이페이ㅣㅈ용)
  */
 
-const { CommunityPost, PostImage, PostLike, PostComment, User } = require('../models');
-const { Op, where } = require('sequelize');
+const db = require('../models');
+const { CommunityPost, PostImage, PostLike, PostComment, User } = db;
+const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
 class CommunityService {
@@ -52,10 +53,10 @@ class CommunityService {
         let order = []
         switch(sortBy){
             case 'popular':
-                order = [['likeCount', 'DESC'],['created_at', 'DESC']]
+                order = [['like_count', 'DESC'], ['created_at', 'DESC']]
                 break;
             case 'comments':
-                order = [['commentCount', 'DESC'], ['created_at', 'DESC']]
+                order = [['comment_count', 'DESC'], ['created_at', 'DESC']]
                 break;
             case 'latest':
             default:
@@ -65,7 +66,7 @@ class CommunityService {
 
         const offset = (page - 1 ) * limit
 
-        const { count, rows: post} = await CommunityPost.findAndCountAll({
+        const { count, rows: posts} = await CommunityPost.findAndCountAll({
             where,
             include : [
                 {
@@ -88,7 +89,7 @@ class CommunityService {
                 'likeCount',
                 'commentCount',
                 'locationName',
-                [sequelize.col('CommunityPost.created_at'), 'createdAt']
+                [sequelize.literal('"CommunityPost"."created_at"'), 'createdAt']
             ],
             order,
             limit,
@@ -100,7 +101,7 @@ class CommunityService {
         if (userId){
             const likes = await PostLike.findAll({
                 where : {
-                    postId : { [Op.in] : post.map (p => p.postId)},
+                    postId : { [Op.in] : posts.map (p => p.postId)},
                     userId
                 },
                 attributes : ['postId']
@@ -108,16 +109,16 @@ class CommunityService {
             likedPostIds = likes.map(l => l.postId)
         }
 
-        const formattedPosts = post.map(p => ({
-            postId : p.postId,
-            title : p.title,
+        const formattedPosts = posts.map(post => ({
+            postId : post.postId,
+            title : post.title,
             author : {
-                userId : p.user.userId,
-                nickname : p.user.nickname,
-                profileImageUrl : p.user.profileImageUrl
+                userId : post.user.userId,
+                nickname : post.user.nickname,
+                profileImage : post.user.profileImageUrl
             },
-            thumbnail : p.images && p.images.length > 0
-                ? p.images[0].imageUrl
+            thumbnail : post.images && post.images.length > 0
+                ? post.images[0].imageUrl
                 : null,
             viewCount : p.viewCount,
             likeCount : p.likeCount,
@@ -167,6 +168,22 @@ class CommunityService {
                     attributes : ['imageId', 'imageUrl'],
                     order :[['imageId', 'ASC']]
 
+                },
+                {
+                    model : PostComment,
+                    as : 'comments',
+                    include : [
+                        {
+                            model : User,
+                            as : 'user',
+                            attributes : ['userId', 'nickname', 'profileImageUrl']
+                        }
+                    ],
+                    where : {
+                        parentCommentId : null
+                    },
+                    required : false,
+                    order : [['created_at', 'ASC']]
                 }
             ]
         })
@@ -200,20 +217,33 @@ class CommunityService {
             title : post.title,
             content : post.content,
             author : {
-                userId : post.userId,
-                nickname : post.nickname,
-                imageUrl : post.imageUrl
+                userId : post.user.userId,
+                nickname : post.user.nickname,
+                profileImage : post.user.profileImageUrl
             },
             images: post.images.map(img => ({
                 imageId : img.imageId,
                 imageUrl : img.imageUrl
             })),
+            comments: post.comments.map(comment => ({
+                commentId : comment.commentId,
+                postId : comment.postId,
+                userId : comment.user.userId,
+                userNickname : comment.user.nickname,
+                userProfileUrl : comment.user.profileImageUrl,
+                content : comment.content,
+                parentCommentId : comment.parentCommentId,
+                createdAt : comment.createdAt,
+                updatedAt : comment.updatedAt
+            })),
             viewCount : post.viewCount + 1,
-            likeCount : post.commentCount,
+            likeCount : post.likeCount,
+            commentCount : post.commentCount,
             isLiked,
             location,
+            locationName: post.locationName,
             createdAt : post.createdAt,
-            updateAt : post.updateAt
+            updatedAt : post.updatedAt
         }
     }// end getPostDetail(postId, userId)
 
@@ -432,8 +462,6 @@ class CommunityService {
                 transaction
             })
 
-            await transaction.commit()
-
             const createdComment = await PostComment.findByPk(comment.commentId,{
                 include : [
                     {
@@ -441,8 +469,11 @@ class CommunityService {
                         as : 'user',
                         attributes : ['userId', 'nickname', 'profileImageUrl']
                     }
-                ]
+                ],
+                transaction
             })
+
+            await transaction.commit()
 
             return {
                 commentId : createdComment.commentId,
@@ -450,14 +481,16 @@ class CommunityService {
                 author : {
                     userId : createdComment.user.userId,
                     nickname : createdComment.user.nickname,
-                    profileImageUrl : createdComment.user.profileImageUrl
+                    profileImage : createdComment.user.profileImageUrl
                 },
                 parentCommentId : createdComment.parentCommentId,
                 createdAt : createdComment.createdAt,
                 message: '댓글이 등록되었습니다.'
             }
         }catch(error){
-            await transaction.rollback()
+            if (transaction && !transaction.finished) {
+                await transaction.rollback()
+            }
             throw error
         }
     }// end createComment

@@ -172,8 +172,56 @@ const authenticate = async (req, res, next) => {
   });
 };
 
+/**
+ * 선택적 인증 미들웨어
+ * 토큰이 있으면 인증하고, 없으면 그냥 통과
+ * 게시글 조회 등 로그인 선택적인 기능에 사용
+ */
+const authenticateOptional = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      // 토큰이 없으면 그냥 통과 (req.user는 undefined)
+      return next();
+    }
+
+    // Bearer Token인 경우에만 검증
+    if (!authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    try {
+      // 토큰 검증
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+
+      // 사용자 조회
+      const user = await User.findByPk(decoded.userId);
+
+      if (user && user.isActive) {
+        // 유효한 사용자면 req.user에 추가
+        req.user = {
+          userId: user.userId,
+          email: user.email,
+          nickname: user.nickname
+        };
+      }
+    } catch (error) {
+      // 토큰 검증 실패해도 그냥 통과 (로그만 남김)
+      logger.debug('Optional auth - invalid token:', error.message);
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Optional auth error:', error);
+    next(); // 에러가 있어도 통과
+  }
+};
+
 module.exports = {
   authenticate,
   authenticateToken,
-  authenticateBasic
+  authenticateBasic,
+  authenticateOptional
 };

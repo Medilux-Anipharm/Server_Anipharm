@@ -8,7 +8,6 @@ const OpenAI = require("openai");
 class ChatbotService {
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY;
-    console.log('apiKey', this.apiKey);
     this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
     this.client = null; // 지연 초기화
   }

@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"  # 호스트 포트 5433으로 변경 (로컬 PostgreSQL과 충돌 방지)
+      - "54321:5432"  # 호스트 포트 54321
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
