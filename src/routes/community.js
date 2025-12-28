@@ -187,7 +187,8 @@ router.get('/:boardType/posts/location', authenticateOptional, communityControll
  *       401:
  *         description: 인증 실패
  */
-router.post('/posts', authenticate, communityController.createPost);
+const upload = require('../middleware/upload');
+router.post('/posts', authenticate, upload.uploadPostImages, communityController.createPost);
 
 /**
  * @swagger

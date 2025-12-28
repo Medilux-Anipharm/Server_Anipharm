@@ -111,21 +111,21 @@ class CommunityService {
 
         const formattedPosts = posts.map(post => ({
             postId : post.postId,
-            title : post.title,
+            title : post.title || '',
             author : {
                 userId : post.user.userId,
-                nickname : post.user.nickname,
-                profileImage : post.user.profileImageUrl
+                nickname : post.user.nickname || '',
+                profileImage : post.user.profileImageUrl || null
             },
             thumbnail : post.images && post.images.length > 0
                 ? post.images[0].imageUrl
                 : null,
-            viewCount : p.viewCount,
-            likeCount : p.likeCount,
-            commentCount : p.commentCount,
-            locationName : p.locationName,
-            isLiked : userId ? likedPostIds.includes(p.postId) : false,
-            createdAt : p.createdAt
+            viewCount : post.viewCount || 0,
+            likeCount : post.likeCount || 0,
+            commentCount : post.commentCount || 0,
+            locationName : post.locationName || '',
+            isLiked : userId ? likedPostIds.includes(post.postId) : false,
+            createdAt : post.createdAt
         }))
 
         return {
@@ -214,12 +214,12 @@ class CommunityService {
         return {
             postId : post.postId,
             boardType : post.boardType,
-            title : post.title,
-            content : post.content,
+            title : post.title || '',
+            content : post.content || '',
             author : {
                 userId : post.user.userId,
-                nickname : post.user.nickname,
-                profileImage : post.user.profileImageUrl
+                nickname : post.user.nickname || '',
+                profileImage : post.user.profileImageUrl || null
             },
             images: post.images.map(img => ({
                 imageId : img.imageId,
@@ -271,7 +271,10 @@ class CommunityService {
         if (!latitude || !longitude || !locationName) {
             throw new Error('위치 정보(위도, 경도, 위치명)는 필수입니다.', 400);
         }
-        if (images.length > 5) {
+        
+        // images가 배열이 아닌 경우 처리
+        const imageArray = Array.isArray(images) ? images : [];
+        if (imageArray.length > 5) {
             throw new Error('이미지는 최대 5개까지 업로드할 수 있습니다.', 400);
         }
 
@@ -291,9 +294,9 @@ class CommunityService {
                 commentCount : 0
             }, {transaction})
 
-            if(images.length > 0){
+            if(imageArray.length > 0){
                 console.log('이미지 저장을 시작합니다')
-                const imageRecords = images.map((imageUrl) => ({
+                const imageRecords = imageArray.map((imageUrl) => ({
                     postId : post.postId,
                     imageUrl
                 }))

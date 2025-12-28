@@ -114,7 +114,42 @@ class CommunityController {
     async createPost(req, res) {
         try {
             const userId = req.user.userId;
-            const postData = req.body;
+            
+            // 업로드된 이미지 파일 처리
+            const imageUrls = [];
+            if (req.files && req.files.length > 0) {
+                logger.info(`이미지 파일 ${req.files.length}개 업로드됨`);
+                req.files.forEach(file => {
+                    // 이미지 URL 생성 (서버 호스트 + 경로)
+                    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/community/${file.filename}`;
+                    imageUrls.push(imageUrl);
+                    logger.info(`이미지 URL 생성: ${imageUrl}`);
+                });
+            } else {
+                logger.info('업로드된 이미지 파일 없음');
+            }
+
+            // req.body.images가 문자열인 경우 처리 (FormData에서 배열이 문자열로 전달될 수 있음)
+            let bodyImages = [];
+            if (req.body.images) {
+                if (Array.isArray(req.body.images)) {
+                    bodyImages = req.body.images;
+                } else if (typeof req.body.images === 'string') {
+                    try {
+                        bodyImages = JSON.parse(req.body.images);
+                    } catch (e) {
+                        bodyImages = [];
+                    }
+                }
+            }
+
+            const finalImages = imageUrls.length > 0 ? imageUrls : bodyImages;
+            logger.info(`최종 이미지 개수: ${finalImages.length}`);
+
+            const postData = {
+                ...req.body,
+                images: finalImages
+            };
 
             const result = await communityService.createdPost(userId, postData);
 
