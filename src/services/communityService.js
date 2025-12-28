@@ -52,14 +52,14 @@ class CommunityService {
         let order = []
         switch(sortBy){
             case 'popular':
-                order = [['likeCount', 'DESC'],['createdAt', 'DESC']]
+                order = [['likeCount', 'DESC'],['created_at', 'DESC']]
                 break;
             case 'comments':
-                order = [['commentCount', 'DESC'], ['createdAt', 'DESC']]
+                order = [['commentCount', 'DESC'], ['created_at', 'DESC']]
                 break;
             case 'latest':
             default:
-                order= ['createdAt', 'DESC']
+                order = [['created_at', 'DESC']]
                 break;
         }
 
@@ -71,7 +71,7 @@ class CommunityService {
                 {
                     model : User,
                     as : 'user',
-                    attributes : ['userId', 'nickname', 'profileImage'],
+                    attributes : ['userId', 'nickname', 'profileImageUrl'],
                     required : true
                 },
                 {
@@ -87,8 +87,8 @@ class CommunityService {
                 'viewCount',
                 'likeCount',
                 'commentCount',
-                'createdAt',
-                'locationName'
+                'locationName',
+                [sequelize.col('CommunityPost.created_at'), 'createdAt']
             ],
             order,
             limit,
@@ -100,7 +100,7 @@ class CommunityService {
         if (userId){
             const likes = await PostLike.findAll({
                 where : {
-                    postId : { [Op.in] : postMessage.map (p => p.postId)},
+                    postId : { [Op.in] : post.map (p => p.postId)},
                     userId
                 },
                 attributes : ['postId']
@@ -108,23 +108,23 @@ class CommunityService {
             likedPostIds = likes.map(l => l.postId)
         }
 
-        const formattedPosts = postMessage.map(post => ({
-            postId : post.postId,
-            title : post.title,
+        const formattedPosts = post.map(p => ({
+            postId : p.postId,
+            title : p.title,
             author : {
-                userId : post.user.userId,
-                nickname : post.user.nickname,
-                profileImage : post.user.profileImage
+                userId : p.user.userId,
+                nickname : p.user.nickname,
+                profileImageUrl : p.user.profileImageUrl
             },
-            thumbnail : post.images && post.images.length > 0 
-                ? post.images[0].imageUrl
+            thumbnail : p.images && p.images.length > 0
+                ? p.images[0].imageUrl
                 : null,
-            viewCount : post.viewCount,
-            likeCount : post.likeCount,
-            commentCount : post.commentCount,
-            locationName : post.locationName,
-            isLiked : userId ? likedPostIds.includes(post.postId) : false,
-            createdAt : post.createdAt
+            viewCount : p.viewCount,
+            likeCount : p.likeCount,
+            commentCount : p.commentCount,
+            locationName : p.locationName,
+            isLiked : userId ? likedPostIds.includes(p.postId) : false,
+            createdAt : p.createdAt
         }))
 
         return {
@@ -159,7 +159,7 @@ class CommunityService {
                 {
                     model : User,
                     as : 'user',
-                    attributes : ['userId', 'nickname', 'profileImage']
+                    attributes : ['userId', 'nickname', 'profileImageUrl']
                 },
                 {
                     model : PostImage,
@@ -204,7 +204,7 @@ class CommunityService {
                 nickname : post.nickname,
                 imageUrl : post.imageUrl
             },
-            imaged: post.images.map(img = ({
+            images: post.images.map(img => ({
                 imageId : img.imageId,
                 imageUrl : img.imageUrl
             })),
@@ -439,7 +439,7 @@ class CommunityService {
                     {
                         model: User,
                         as : 'user',
-                        attributes : ['userId', 'nickname', 'profileImage']
+                        attributes : ['userId', 'nickname', 'profileImageUrl']
                     }
                 ]
             })
@@ -450,7 +450,7 @@ class CommunityService {
                 author : {
                     userId : createdComment.user.userId,
                     nickname : createdComment.user.nickname,
-                    profileImage : createdComment.user.profileImage
+                    profileImageUrl : createdComment.user.profileImageUrl
                 },
                 parentCommentId : createdComment.parentCommentId,
                 createdAt : createdComment.createdAt,
