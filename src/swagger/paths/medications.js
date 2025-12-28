@@ -213,7 +213,7 @@
  *         required: true
  *         schema:
  *           type: string
- *         description: 검색 키워드 (예: 구토, 피부염, 치아)
+ *         description: "검색 키워드 (예: 구토, 피부염, 치아)"
  *         example: 구토
  *       - in: query
  *         name: species

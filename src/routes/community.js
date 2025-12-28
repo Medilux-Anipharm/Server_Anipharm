@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const communityController = require('../controllers/communityController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authenticateOptional } = require('../middleware/auth');
 
 /**
  * @swagger
@@ -68,7 +68,7 @@ const { authenticate } = require('../middleware/auth');
  *       500:
  *         description: 서버 오류
  */
-router.get('/:boardType/posts', communityController.getPostList);
+router.get('/:boardType/posts', authenticateOptional, communityController.getPostList);
 
 /**
  * @swagger
@@ -128,7 +128,7 @@ router.get('/:boardType/posts', communityController.getPostList);
  *       400:
  *         description: 위도/경도 정보 누락
  */
-router.get('/:boardType/posts/location', communityController.getPostListByLocation);
+router.get('/:boardType/posts/location', authenticateOptional, communityController.getPostListByLocation);
 
 /**
  * @swagger
@@ -208,7 +208,7 @@ router.post('/posts', authenticate, communityController.createPost);
  *       404:
  *         description: 게시글을 찾을 수 없음
  */
-router.get('/posts/:postId', communityController.getPostDetail);
+router.get('/posts/:postId', authenticateOptional, communityController.getPostDetail);
 
 /**
  * @swagger
