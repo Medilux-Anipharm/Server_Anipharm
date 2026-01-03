@@ -27,7 +27,7 @@ module.export = (sequelize) => {
         mediaType : {
             type : DataTypes.ENUM('image', 'png'),
             allowNull : false,
-            field : 'mediaType',
+            field : 'media_type',
             comment : '미디어 타입 (이미지)'
         }
     },{ 
