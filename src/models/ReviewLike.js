@@ -4,7 +4,7 @@ module.exports = (sequelize) => {
     const ReviewLike = sequelize.define('ReviewLike',{
         reviewLikeId :{
             type : DataTypes.BIGINT,
-            primaryKye : true,
+            primaryKey : true,
             autoIncrement : true,
             field : 'review_like_id'
         },
@@ -32,9 +32,9 @@ module.exports = (sequelize) => {
         createdAt : 'created_at',
         updatedAt : false,
         indexes : [
-            {fields : ['review_id'], name : 'idx_review_id'},
-            {fields : ['user_id'], name : 'idx_user_id'},
-            {fields : ['review_id', 'user_id'], unique : true, name : ['idx_review_user_unique'] } 
+            {fields : ['review_id'], name : 'idx_review_like_review_id'},
+            {fields : ['user_id'], name : 'idx_review_like_user_id'},
+            {fields : ['review_id', 'user_id'], unique : true, name : 'idx_review_like_unique'}
         ]
     })
 
