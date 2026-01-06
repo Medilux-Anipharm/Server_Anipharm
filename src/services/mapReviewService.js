@@ -4,6 +4,7 @@ const db = require('../models')
 const {Review, ReviewKeyword, ReviewLike, ReviewMedia,User, Pharmacy, Hospital} = db
 const {Op} = require('sequelize')
 const sequelize = require('../config/database')
+const path = require('path')
 
 class MapReviewService {
 
@@ -149,80 +150,116 @@ class MapReviewService {
 
     // 리뷰 요약
     async getReviewSummary(targetType, targetId){
-        const where = {}
-
-        if(targetType == 'pharmacy'){
-            where.pharmacyId = targetId
-        }else if (targetType == 'hospital'){
-            where.hospitalId = targetId
-        }else{
-            throw new Error('잘못된 접근 입니당당당')
-        }
-
-        // 전체 리뷰 수  
-        const totalReviews  = await Review.count({where})
-
-        if (totalReviews === 0){
-            return {
-                averageRating : 0,
-                totalRating : 0,
-                ratingDistribution : {5 : 0, 4: 0, 3:0,2:0, 1:0},
-                keywordSummary : []
+        try {
+            // targetId를 명시적으로 숫자로 변환
+            const numericTargetId = typeof targetId === 'string' ? parseInt(targetId, 10) : Number(targetId);
+            
+            console.log(`[getReviewSummary 시작] targetType: ${targetType}, targetId: ${targetId} (${typeof targetId}), numericTargetId: ${numericTargetId} (${typeof numericTargetId})`);
+            
+            if (isNaN(numericTargetId) || numericTargetId <= 0) {
+                console.error(`[getReviewSummary] 유효하지 않은 targetId: ${targetId}`);
+                throw new Error(`유효하지 않은 ID: ${targetId}`);
             }
-        }
+            
+            const where = {}
 
-        //별점 평균
-        const ratingStats = await Review.findOne({
-            where,
-            attributes : [
-                [sequelize.fn('AVG', sequelize.col('rating')), 'averageRating'],
-                [sequelize.fn('COUNT', sequelize.col('rating')), 'count'],
-            ],
-            raw : true
-        })
+            if(targetType == 'pharmacy'){
+                where.pharmacyId = numericTargetId
+            }else if (targetType == 'hospital'){
+                where.hospitalId = numericTargetId
+            }else{
+                console.error(`[getReviewSummary] 잘못된 타입: ${targetType}`);
+                throw new Error('잘못된 접근 입니당당당')
+            }
 
-        const ratingDistribution = await Review.findAll({
-            where,
-            attributes : [
-                'rating',
-                [sequelize.fn('COUNT', sequelize.col('rating')), 'count'],
-            ],
-            group : ['rating'],
-            raw : true
-        })
+            console.log(`[getReviewSummary] where 조건:`, JSON.stringify(where));
 
-        const distribution = { 5: 0, 4:0, 3:0, 2:0,1:0}
-        ratingDistribution.forEach(item=> {
-            distribution[item.rating] = parseInt(item.count)
-        });
-        const keywordStats = await ReviewKeyword.findAll({
-            include : [{
-                model : Review,
+            // 전체 리뷰 수  
+            console.log(`[getReviewSummary] 전체 리뷰 수 조회 시작`);
+            const totalReviews  = await Review.count({where})
+            console.log(`[getReviewSummary] 전체 리뷰 수: ${totalReviews}`);
+
+            if (totalReviews === 0){
+                console.log(`[getReviewSummary] 리뷰 없음, 빈 데이터 반환`);
+                return {
+                    averageRating : 0,
+                    totalRating : 0,
+                    ratingDistribution : {5 : 0, 4: 0, 3:0,2:0, 1:0},
+                    keywordSummary : []
+                }
+            }
+
+            //별점 평균
+            console.log(`[getReviewSummary] 별점 평균 조회 시작`);
+            const ratingStats = await Review.findOne({
                 where,
-                attributes:[]
-            }],
-            attributes : [
-                'keyword',
-                [sequelize.fn('COUNT', sequelize.col('review_keywords.keyword')), 'count'],
-            ],
-            group : ['keyword'],
-            order : [[sequelize.literal('count'), 'DESC']],
-            limit : 10,
-            raw : true
-        })
+                attributes : [
+                    [sequelize.fn('AVG', sequelize.col('rating')), 'averageRating'],
+                    [sequelize.fn('COUNT', sequelize.col('rating')), 'count'],
+                ],
+                raw : true
+            })
+            console.log(`[getReviewSummary] 별점 평균 결과:`, JSON.stringify(ratingStats));
 
-        const keywordSummary = keywordStats.map(item => ({
-            keyword : item.keyword,
-            count : parseInt(item.count),
-            percentage : ((parseInt(IntersectionObserver.count)/totalReviews) * 100).toFixed(1)
+            console.log(`[getReviewSummary] 별점 분포 조회 시작`);
+            const ratingDistribution = await Review.findAll({
+                where,
+                attributes : [
+                    'rating',
+                    [sequelize.fn('COUNT', sequelize.col('rating')), 'count'],
+                ],
+                group : ['rating'],
+                raw : true
+            })
+            console.log(`[getReviewSummary] 별점 분포 결과:`, JSON.stringify(ratingDistribution));
 
-        }))
+            const distribution = { 5: 0, 4:0, 3:0, 2:0,1:0}
+            ratingDistribution.forEach(item=> {
+                distribution[item.rating] = parseInt(item.count)
+            });
+            console.log(`[getReviewSummary] 별점 분포 처리 완료:`, JSON.stringify(distribution));
 
-        return{
-            averageRating : parseFloat(ratingStats.averageRating || 0).toFixed(1),
-            totalReviews,
-            ratingDistribution:distribution,
-            keywordSummary
+            console.log(`[getReviewSummary] 키워드 통계 조회 시작`);
+            const keywordStats = await ReviewKeyword.findAll({
+                include : [{
+                    model : Review,
+                    as : 'review',  // alias 지정
+                    where,
+                    attributes:[]
+                }],
+                attributes : [
+                    'keyword',
+                    [sequelize.fn('COUNT', sequelize.col('ReviewKeyword.keyword')), 'count'],
+                ],
+                group : ['keyword'],
+                order : [[sequelize.literal('count'), 'DESC']],
+                limit : 10,
+                raw : true
+            })
+            console.log(`[getReviewSummary] 키워드 통계 결과:`, JSON.stringify(keywordStats));
+
+            const keywordSummary = keywordStats.map(item => ({
+                keyword : item.keyword,
+                count : parseInt(item.count),
+                percentage : ((parseInt(item.count)/totalReviews) * 100).toFixed(1)
+
+            }))
+            console.log(`[getReviewSummary] 키워드 요약 처리 완료:`, JSON.stringify(keywordSummary));
+
+            const result = {
+                averageRating : parseFloat(ratingStats.averageRating || 0).toFixed(1),
+                totalReviews,
+                ratingDistribution:distribution,
+                keywordSummary
+            }
+            console.log(`[getReviewSummary] 최종 결과:`, JSON.stringify(result));
+            return result;
+        } catch (error) {
+            console.error(`[getReviewSummary 에러] targetType: ${targetType}, targetId: ${targetId}`);
+            console.error(`[getReviewSummary 에러] 메시지: ${error.message}`);
+            console.error(`[getReviewSummary 에러] 스택:`, error.stack);
+            console.error(`[getReviewSummary 에러] 전체:`, error);
+            throw error;
         }
  
     }// end getReviewSummary
@@ -352,11 +389,26 @@ class MapReviewService {
             }
 
             if(mediaFiles && mediaFiles.length > 0) {
-                const mediaData = mediaFiles.map((file, index) => ({
-                    reviewId : review.reviewId,
-                    mediaUrl : file.path || file.url,
-                    mediaType : file.mimetype?.startsWith('image/')? 'image' : 'video',
-                }))
+                const mediaData = mediaFiles.map((file, index) => {
+                    // 파일 경로를 상대 경로로 변환 (/app/uploads/reviews/... -> /uploads/reviews/...)
+                    let mediaUrl = file.path || file.url;
+                    if (mediaUrl) {
+                        // /app/uploads/로 시작하면 /uploads/로 변환
+                        mediaUrl = mediaUrl.replace(/^\/app\/uploads\//, '/uploads/');
+                        // 절대 경로가 아닌 경우 /uploads/로 시작하도록 보장
+                        if (!mediaUrl.startsWith('/uploads/') && !mediaUrl.startsWith('http')) {
+                            // 파일명만 있는 경우
+                            const filename = path.basename(mediaUrl);
+                            mediaUrl = `/uploads/reviews/${filename}`;
+                        }
+                    }
+                    console.log(`[createReview] 미디어 파일 ${index + 1} - 원본: ${file.path || file.url}, 변환: ${mediaUrl}`);
+                    return {
+                        reviewId : review.reviewId,
+                        mediaUrl : mediaUrl,
+                        mediaType : file.mimetype?.startsWith('image/')? 'image' : 'video',
+                    };
+                });
                 await ReviewMedia.bulkCreate(mediaData, {transaction})
             }
 
@@ -422,11 +474,26 @@ class MapReviewService {
             }
 
             if (mediaFiles && mediaFiles.length > 0 ){
-                const mediaData = mediaFiles.map((file, index) => ({
-                    reviewId,
-                    mediaUrl: file.path || file.url,
-                    mediaType: file.mimetype?.startsWith('video/') ? 'video' : 'image',
-                }));
+                const mediaData = mediaFiles.map((file, index) => {
+                    // 파일 경로를 상대 경로로 변환 (/app/uploads/reviews/... -> /uploads/reviews/...)
+                    let mediaUrl = file.path || file.url;
+                    if (mediaUrl) {
+                        // /app/uploads/로 시작하면 /uploads/로 변환
+                        mediaUrl = mediaUrl.replace(/^\/app\/uploads\//, '/uploads/');
+                        // 절대 경로가 아닌 경우 /uploads/로 시작하도록 보장
+                        if (!mediaUrl.startsWith('/uploads/') && !mediaUrl.startsWith('http')) {
+                            // 파일명만 있는 경우
+                            const filename = path.basename(mediaUrl);
+                            mediaUrl = `/uploads/reviews/${filename}`;
+                        }
+                    }
+                    console.log(`[updateReview] 미디어 파일 ${index + 1} - 원본: ${file.path || file.url}, 변환: ${mediaUrl}`);
+                    return {
+                        reviewId,
+                        mediaUrl: mediaUrl,
+                        mediaType: file.mimetype?.startsWith('video/') ? 'video' : 'image',
+                    };
+                });
                 await ReviewMedia.bulkCreate(mediaData, { transaction });
             }
 
@@ -465,19 +532,28 @@ class MapReviewService {
 
 
     async addLike(reviewId, userId){
-        const [like, created ] = await ReviewLike.findOrCreate({
+        const existingLike = await ReviewLike.findOne({
             where : {
-                reviewId,
-                userId
-            },
-            defaults : {
                 reviewId,
                 userId
             }
         })
-        if(!created){
-            throw new Error('이미 좋아요를 누른 리뷰입니다')
+
+        if(existingLike){
+            // 이미 좋아요를 누른 경우 현재 좋아요 수 반환
+            const review = await Review.findByPk(reviewId,{
+                attributes : ['likeCount']
+            })
+            return { likeCount : review.likeCount}
         }
+
+        // 좋아요 생성
+        await ReviewLike.create({
+            reviewId,
+            userId
+        })
+
+        // 좋아요 수 증가
         await Review.increment('likeCount',{
             where : {reviewId}
         })
@@ -495,7 +571,13 @@ class MapReviewService {
         })
 
         if(!like){
-            throw new Error('좋아요를 누르지 않은 리뷰입니다.')
+            // 이미 좋아요를 누르지 않은 경우 현재 좋아요 수 반환
+            const review = await Review.findByPk(reviewId,{
+                attributes : ['likeCount']
+            })
+            return {
+                likeCount : review.likeCount
+            }
         }
 
         await like.destroy()

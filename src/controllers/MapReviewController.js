@@ -62,9 +62,12 @@ class ReviewController {
   } // end getReviewList
 
   async getReviewSummary(req, res) {
+    const { pharmacyId, hospitalId } = req.params;
+    let targetId, targetType;
+    
     try {
-      const { pharmacyId, hospitalId } = req.params;
-      let targetId, targetType;
+      logger.info(`[리뷰 요약 요청] pharmacyId: ${pharmacyId}, hospitalId: ${hospitalId}`);
+      
       if (pharmacyId) {
         targetType = "pharmacy";
         targetId = parseInt(pharmacyId);
@@ -72,20 +75,28 @@ class ReviewController {
         targetType = "hospital";
         targetId = parseInt(hospitalId);
       } else {
+        logger.error(`[리뷰 요약] 파라미터 오류: pharmacyId=${pharmacyId}, hospitalId=${hospitalId}`);
         throw new Error("찾을 수 없습니다");
       }
 
+      logger.info(`[리뷰 요약] 타입: ${targetType}, ID: ${targetId}`);
       const result = await reviewService.getReviewSummary(targetType, targetId);
-      logger.info(`##### review Summary ${targetType} | ${targetId}`);
+      
+      logger.info(`[리뷰 요약 성공] ${targetType} | ${targetId} | 평균: ${result.averageRating}, 총: ${result.totalReviews}`);
       return res.status(200).json({
         success: true,
         data: result,
       });
     } catch (error) {
-      logger.error(`리뷰 요약을 찾을 수 없습니다 : ${error}`);
+      logger.error(`[리뷰 요약 실패] 타입: ${targetType}, ID: ${targetId}`);
+      logger.error(`[리뷰 요약 에러] 메시지: ${error.message}`);
+      logger.error(`[리뷰 요약 에러] 스택: ${error.stack}`);
+      logger.error(`[리뷰 요약 에러] 전체 에러 객체:`, JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      
       return res.status(500).json({
         success: false,
         message: "리뷰요약을 찾을 수 없습니다.",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
   } // end getReviewSummary
