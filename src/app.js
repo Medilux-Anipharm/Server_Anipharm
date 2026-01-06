@@ -23,6 +23,7 @@ const communityRoutes = require('./routes/community');
 const messageRoutes = require('./routes/messages');
 const notificationRoutes = require('./routes/notifications');
 const mapRoutes = require('./routes/map');
+const reviewRoutes = require('./routes/reviews');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -110,6 +111,7 @@ app.use('/api/community', communityRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/map', mapRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // 404 핸들러
 app.use((req, res) => {

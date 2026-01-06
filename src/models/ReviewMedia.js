@@ -1,6 +1,6 @@
 const { DataTypes, Model, Sequelize } = require("sequelize");
 
-module.export = (sequelize) => {
+module.exports = (sequelize) => {
     const ReviewMedia = sequelize.define('ReviewMedia', {
         mediaId : {
             type : DataTypes.BIGINT,

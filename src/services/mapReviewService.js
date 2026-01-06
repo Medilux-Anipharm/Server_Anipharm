@@ -351,11 +351,11 @@ class MapReviewService {
                 await ReviewKeyword.bulkCreate(keywordData, {transaction})
             }
 
-            if(mediaFiles && mediaFiles > 0) {
+            if(mediaFiles && mediaFiles.length > 0) {
                 const mediaData = mediaFiles.map((file, index) => ({
-                    reviewId : Review.reviewId,
+                    reviewId : review.reviewId,
                     mediaUrl : file.path || file.url,
-                    mediaType : file.mimetype?.startsWith('image/')? 'image' : 'png',
+                    mediaType : file.mimetype?.startsWith('image/')? 'image' : 'video',
                 }))
                 await ReviewMedia.bulkCreate(mediaData, {transaction})
             }
@@ -370,8 +370,8 @@ class MapReviewService {
         // ing
     }// end createReview()
 
-    async updateReview(reviewId, reviewData = {}, keywords = [], mediaFiles = []){
-        const review = await Review.findOne({where : reviewId})
+    async updateReview(reviewId, userId, reviewData = {}, keywords = [], mediaFiles = []){
+        const review = await Review.findOne({where: {reviewId}})
 
         if (!review ){
             throw new Error ('리뷰를 찾을 수 없습니다.')
@@ -433,17 +433,16 @@ class MapReviewService {
     }// end updateReview
 
     async deleteReview(reviewId, userId){
-        const review = Review.findOne({where : reviewId})
+        const review = await Review.findOne({where: {reviewId}})
         if(!review) {
             throw new Error ('리뷰를 찾을 수 없습니다')
         }
         if(review.userId !== userId){
             throw new Error('본인 리뷰만 삭제 가능합니다')
-
         }
-        console.log('리뷰가 삭제 되었습니다')
 
         await review.destroy()
+        console.log('리뷰가 삭제 되었습니다')
     }// end deleteReview()
 
 
@@ -481,10 +480,10 @@ class MapReviewService {
             throw new Error('좋아요를 누르지 않은 리뷰입니다.')
         }
 
-        await like.destroy
+        await like.destroy()
 
         await Review.decrement('likeCount', {
-            where : {userId}
+            where : {reviewId}
         })
 
         const review = await Review.findByPk(reviewId,{
