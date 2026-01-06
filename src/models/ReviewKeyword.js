@@ -22,18 +22,17 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING(60),
             allowNull : false,
             comment : '리뷰 키워드(태그)'
-        },{
-            tableName : 'review_keywords',
-            timestamps : true,
-            createdAt : 'created_at',
-            updatedAt : false,
-            indexes : [
-                {field : ['review_id'], name : ['idx_review_id']},
-                {field : ['keyword'], name : ['idx_keyword_id']},
-            ]
-        },
-
-    );
+        }
+    }, {
+        tableName : 'review_keywords',
+        timestamps : true,
+        createdAt : 'created_at',
+        updatedAt : false,
+        indexes : [
+            {fields : ['review_id'], name : 'idx_review_keyword_review_id'},
+            {fields : ['keyword'], name : 'idx_review_keyword_keyword'},
+        ]
+    });
 
     ReviewKeyword.associate = (models) => {
         ReviewKeyword.belongsTo(models.Review, {

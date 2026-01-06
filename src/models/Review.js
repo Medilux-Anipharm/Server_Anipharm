@@ -1,6 +1,6 @@
 const { DataTypes, Model } = require("sequelize");
 
-module.export = (sequelize) => {
+module.exports = (sequelize) => {
     const Review = sequelize.define('Review',{
         reviewId : {
             type : DataTypes.BIGINT,
@@ -64,11 +64,11 @@ module.export = (sequelize) => {
         paranoid: true,
         deletedAt : 'deleted_at',
         indexes : [
-            {field : ['pharmacy_id'], name : 'idx_pharmacy_id'},
-            {field : ['hospital_id'], name : 'idx_hospital_id'},
-            {field : ['user_id'], name : 'idx_user_id'},
-            {field : ['created_at'], name : 'idx_created_at'},
-            {field : ['like_count'], name : 'idx_like_count'},
+            {fields : ['pharmacy_id'], name : 'idx_pharmacy_id'},
+            {fields : ['hospital_id'], name : 'idx_hospital_id'},
+            {fields : ['user_id'], name : 'idx_user_id'},
+            {fields : ['created_at'], name : 'idx_created_at'},
+            {fields : ['like_count'], name : 'idx_like_count'},
         ]
     })
 
@@ -86,7 +86,7 @@ module.export = (sequelize) => {
         });
 
         // 동물병원 리뷰 (선택)
-        Review.belongsTo(models.VeterinaryHospital, {
+        Review.belongsTo(models.Hospital, {
             foreignKey: 'hospitalId',
             as: 'hospital'
         });

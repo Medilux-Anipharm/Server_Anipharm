@@ -1,6 +1,6 @@
 const { DataTypes, Model, Sequelize } = require("sequelize");
 
-module.export = (sequelize) => {
+module.exports = (sequelize) => {
     const ReviewMedia = sequelize.define('ReviewMedia', {
         mediaId : {
             type : DataTypes.BIGINT,
@@ -30,16 +30,15 @@ module.export = (sequelize) => {
             field : 'media_type',
             comment : '미디어 타입 (이미지)'
         }
-    },{ 
+    }, {
         tableName : 'review_media',
         timestamps : true,
         createdAt : 'created_at',
-        updateAt : false,
+        updatedAt : false,
         indexes : [
-            {field : ['review_id'], name : ['idx_review_id']}
+            {fields : ['review_id'], name : 'idx_review_media_review_id'}
         ]
-    }
-)
+    });
 
     ReviewMedia.associate = (models) => {
         ReviewMedia.belongsTo(models.Review, {
