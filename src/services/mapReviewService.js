@@ -2,7 +2,7 @@
 
 const db = require('../models')
 const {Review, ReviewKeyword, ReviewLike, ReviewMedia,User, Pharmacy, Hospital} = db
-const {Op, where} = require('sequelize')
+const {Op} = require('sequelize')
 const sequelize = require('../config/database')
 
 class MapReviewService {
@@ -17,45 +17,45 @@ class MapReviewService {
             userId = null
         } = options
 
-        where = {}
+        let whereClause = {}
 
         if (targetType == 'pharmacy'){
-            where.pharmacyId = targetId
+            whereClause.pharmacyId = targetId
         }else if (targetType == 'hospital'){
-            where.pharmacyId = targetId
+            whereClause.hospitalId = targetId
         }else {
             throw new Error('잘못된 접근입니다.')
         }
         if (minRating !== null && minRating >=1 && minRating <= 5){
-            where.rating = {[Op.gte] : minRating}
+            whereClause.rating = {[Op.gte] : minRating}
         }
 
         if (userId) {
-            where.userId = userId
+            whereClause.userId = userId
         }
 
         let order = []
         switch(sortBy){
             case 'popular':
-                order = [['review_like_count', 'DESC'],['created_at', 'DESC'] ]
+                order = [['likeCount', 'DESC'], [sequelize.literal('"Review"."created_at"'), 'DESC']]
                 break
             case 'rating':
-                order = [['rating', 'DESC'], ['created_at', 'DESC']]
+                order = [['rating', 'DESC'], [sequelize.literal('"Review"."created_at"'), 'DESC']]
                 break
             case 'latest':
             default:
-                order = [['created_at','DESC']]
+                order = [[sequelize.literal('"Review"."created_at"'), 'DESC']]
                 break
         }
 
         const offset = (page -1) * limit
 
         const { count, rows: reviews } = await Review.findAndCountAll({
-          where,
+          where: whereClause,
           include: [
             {
-              model: "users",
-              as: "users",
+              model: User,
+              as: "user",
               attributes: ["userId", "nickname", "profileImageUrl"],
               required: true,
             },
@@ -66,11 +66,10 @@ class MapReviewService {
               required: false,
             },
             {
-              model: "ReviewMedia",
+              model: ReviewMedia,
               as: "media",
               attributes: ["mediaId", "mediaUrl", "mediaType"],
               required: false,
-              order: [["mediaOrder", "ASC"]],
             },
           ],
           attributes: [
@@ -78,13 +77,14 @@ class MapReviewService {
             "rating",
             "content",
             "likeCount",
-            [sequelize.literal('"Review"."created_at"'), "createdAt"],
-            [sequelize.literal('"Review"."updated_at"'), "updatedAt"],
+            [sequelize.literal('"Review"."created_at"'), 'createdAt'],
+            [sequelize.literal('"Review"."updated_at"'), 'updatedAt'],
           ],
           order,
           limit,
           offset,
-          distinct:true
+          distinct: true,
+          subQuery: false
         });
 
         // 키워드 필터링(키워드가 저장된 경우)
@@ -176,7 +176,7 @@ class MapReviewService {
             where,
             attributes : [
                 [sequelize.fn('AVG', sequelize.col('rating')), 'averageRating'],
-                [sequelize.fn('COUNT', sequelize.col('rating')), count],
+                [sequelize.fn('COUNT', sequelize.col('rating')), 'count'],
             ],
             raw : true
         })
@@ -185,7 +185,7 @@ class MapReviewService {
             where,
             attributes : [
                 'rating',
-                [sequelize.fn('COUNT', sequelize.col('rating')), count],
+                [sequelize.fn('COUNT', sequelize.col('rating')), 'count'],
             ],
             group : ['rating'],
             raw : true
@@ -359,12 +359,24 @@ class MapReviewService {
                 }))
                 await ReviewMedia.bulkCreate(mediaData, {transaction})
             }
+
+            // 트랜잭션 커밋
             await transaction.commit()
 
-            return await this.getReviewDetail(review.reviewId, userId)
+            // 커밋 후 상세 조회 (트랜잭션 밖에서)
+            try {
+                return await this.getReviewDetail(review.reviewId, userId)
+            } catch(detailError) {
+                // 상세 조회 실패 시 기본 정보 반환
+                console.error('리뷰 상세 조회 실패:', detailError)
+                return review
+            }
 
         }catch(error){
-            await transaction.rollback()
+            // 트랜잭션이 아직 커밋되지 않은 경우에만 롤백
+            if (!transaction.finished) {
+                await transaction.rollback()
+            }
             throw error
         }
         // ing
@@ -410,24 +422,30 @@ class MapReviewService {
             }
 
             if (mediaFiles && mediaFiles.length > 0 ){
-                const existingMedia = await Review.findAll({
-                    where : {mediaId},
-                    limit : 1,
-                    transaction
-                })
-
-          const mediaData = mediaFiles.map((file, index) => ({
+                const mediaData = mediaFiles.map((file, index) => ({
                     reviewId,
                     mediaUrl: file.path || file.url,
                     mediaType: file.mimetype?.startsWith('video/') ? 'video' : 'image',
                 }));
                 await ReviewMedia.bulkCreate(mediaData, { transaction });
             }
+
+            // 트랜잭션 커밋
             await transaction.commit()
-            return await this.getReviewDetail(reviewId, userId)
-                
+
+            // 커밋 후 상세 조회 (트랜잭션 밖에서)
+            try {
+                return await this.getReviewDetail(reviewId, userId)
+            } catch(detailError) {
+                console.error('리뷰 상세 조회 실패:', detailError)
+                return review
+            }
+
         }catch(error){
-            await transaction.rollback()
+            // 트랜잭션이 아직 커밋되지 않은 경우에만 롤백
+            if (!transaction.finished) {
+                await transaction.rollback()
+            }
             throw error
         }
     }// end updateReview

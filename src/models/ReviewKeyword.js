@@ -36,7 +36,7 @@ module.exports = (sequelize) => {
 
     ReviewKeyword.associate = (models) => {
         ReviewKeyword.belongsTo(models.Review, {
-            foreignKey : 'review_id',
+            foreignKey : 'reviewId',
             as :'review'
         });
     };

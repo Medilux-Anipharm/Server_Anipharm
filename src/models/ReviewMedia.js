@@ -25,10 +25,10 @@ module.exports = (sequelize) => {
             comment : '지도 리뷰 미디어 url'
         },
         mediaType : {
-            type : DataTypes.ENUM('image', 'png'),
+            type : DataTypes.ENUM('image', 'video'),
             allowNull : false,
             field : 'media_type',
-            comment : '미디어 타입 (이미지)'
+            comment : '미디어 타입 (이미지, 비디오)'
         }
     }, {
         tableName : 'review_media',
@@ -42,8 +42,8 @@ module.exports = (sequelize) => {
 
     ReviewMedia.associate = (models) => {
         ReviewMedia.belongsTo(models.Review, {
-            foreignKey : 'review_id',
-            as : 'reviews'
+            foreignKey : 'reviewId',
+            as : 'review'
         })
     }
 

@@ -90,6 +90,24 @@ module.exports = (sequelize) => {
             foreignKey: 'hospitalId',
             as: 'hospital'
         });
+
+        // 리뷰 키워드
+        Review.hasMany(models.ReviewKeyword, {
+            foreignKey: 'reviewId',
+            as: 'keywords'
+        });
+
+        // 리뷰 미디어
+        Review.hasMany(models.ReviewMedia, {
+            foreignKey: 'reviewId',
+            as: 'media'
+        });
+
+        // 리뷰 좋아요
+        Review.hasMany(models.ReviewLike, {
+            foreignKey: 'reviewId',
+            as: 'likes'
+        });
     };
 
     return Review;
