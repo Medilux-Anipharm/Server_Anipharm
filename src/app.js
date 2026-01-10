@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
+const cron = require('node-cron');
 require('dotenv').config();
 
 const sequelize = require('./config/database');
@@ -24,6 +25,7 @@ const messageRoutes = require('./routes/messages');
 const notificationRoutes = require('./routes/notifications');
 const mapRoutes = require('./routes/map');
 const reviewRoutes = require('./routes/reviews');
+const pickupRoutes = require('./routes/pickup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -112,6 +114,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/map', mapRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/pickup', pickupRoutes);
 
 // 404 핸들러
 app.use((req, res) => {
@@ -137,6 +140,19 @@ const startServer = async () => {
       await sequelize.sync({ alter: false });
       logger.info('데이터베이스 동기화 완료');
     }
+
+    // 자동 취소 스케줄러 설정 (매일 자정 실행)
+    cron.schedule('0 0 * * *', async () => {
+      logger.info('[Scheduler] 픽업 자동 취소 스케줄러 실행');
+      try {
+        const pickupService = require('./services/pickupService');
+        const canceledCount = await pickupService.autoCancel();
+        logger.info(`[Scheduler] ${canceledCount}건의 픽업 요청이 자동 취소되었습니다.`);
+      } catch (error) {
+        logger.error('[Scheduler] 자동 취소 실행 오류:', error);
+      }
+    });
+    logger.info('픽업 자동 취소 스케줄러 설정 완료 (매일 00:00 실행)');
 
     app.listen(PORT, '0.0.0.0', () => {
       logger.info(`서버가 포트 ${PORT}에서 실행 중입니다. (0.0.0.0:${PORT})`);
