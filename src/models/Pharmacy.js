@@ -53,6 +53,32 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       field: 'review_count'
+    },
+    pharmacyEmail: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true,
+      field: 'pharmacy_email',
+      comment: '약국 계정 이메일'
+    },
+    passwordHash: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'password_hash',
+      comment: '비밀번호 해시'
+    },
+    businessNumber: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      unique: true,
+      field: 'business_number',
+      comment: '사업자 등록번호'
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      field: 'is_active',
+      comment: '계정 활성화 상태'
     }
   }, {
     tableName: 'pharmacies',
@@ -61,7 +87,9 @@ module.exports = (sequelize) => {
     updatedAt: 'updated_at',
     indexes: [
       { fields: ['latitude', 'longitude'], name: 'idx_pharmacy_location' },
-      { fields: ['rating_average'] }
+      { fields: ['rating_average'] },
+      { fields: ['pharmacy_email'], name: 'idx_pharmacy_email' },
+      { fields: ['business_number'], name: 'idx_business_number' }
     ]
   });
 

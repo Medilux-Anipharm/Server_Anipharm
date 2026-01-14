@@ -198,3 +198,145 @@ exports.getTopRated = async (req, res) => {
     }
 };
 
+/**
+ * 약국 회원가입
+ */
+exports.registerPharmacy = async (req, res) => {
+    try {
+        const { pharmacyEmail, password, passwordConfirm, businessNumber, name, phone, address, addressDetail, latitude, longitude, operatingHours, website } = req.body;
+
+        // 필수 필드 검증
+        if (!pharmacyEmail || !password || !passwordConfirm || !businessNumber || !name || !address || !latitude || !longitude) {
+            return res.status(400).json({
+                success: false,
+                message: '필수 정보를 모두 입력해주세요.'
+            });
+        }
+
+        // 비밀번호 확인 검증
+        if (password !== passwordConfirm) {
+            return res.status(400).json({
+                success: false,
+                message: '비밀번호가 일치하지 않습니다.'
+            });
+        }
+
+        const pharmacy = await pharmacyService.registerPharmacy({
+            pharmacyEmail,
+            password,
+            businessNumber,
+            name,
+            phone,
+            address,
+            addressDetail,
+            latitude,
+            longitude,
+            operatingHours,
+            website
+        });
+
+        res.status(201).json({
+            success: true,
+            message: '약국 회원가입이 완료되었습니다.',
+            data: pharmacy
+        });
+    } catch (error) {
+        console.error('약국 회원가입 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || '회원가입 중 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * 약국 로그인
+ */
+exports.loginPharmacy = async (req, res) => {
+    try {
+        const { pharmacyEmail, password } = req.body;
+
+        if (!pharmacyEmail || !password) {
+            return res.status(400).json({
+                success: false,
+                message: '이메일과 비밀번호를 입력해주세요.'
+            });
+        }
+
+        const result = await pharmacyService.loginPharmacy({ pharmacyEmail, password });
+
+        res.status(200).json({
+            success: true,
+            message: '로그인 성공',
+            data: result
+        });
+    } catch (error) {
+        console.error('약국 로그인 오류:', error);
+        res.status(401).json({
+            success: false,
+            message: error.message || '로그인 중 오류가 발생했습니다.'
+        });
+    }
+};
+
+/**
+ * 약국 이메일 중복 확인
+ */
+exports.checkEmail = async (req, res) => {
+    try {
+        const { pharmacyEmail } = req.query;
+
+        if (!pharmacyEmail) {
+            return res.status(400).json({
+                success: false,
+                message: '이메일을 입력해주세요.'
+            });
+        }
+
+        const exists = await pharmacyService.checkEmailExists(pharmacyEmail);
+
+        res.status(200).json({
+            success: true,
+            available: !exists
+        });
+    } catch (error) {
+        console.error('이메일 중복 확인 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '이메일 중복 확인 중 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * 사업자번호 중복 확인
+ */
+exports.checkBusinessNumber = async (req, res) => {
+    try {
+        const { businessNumber } = req.query;
+
+        if (!businessNumber) {
+            return res.status(400).json({
+                success: false,
+                message: '사업자번호를 입력해주세요.'
+            });
+        }
+
+        const exists = await pharmacyService.checkBusinessNumberExists(businessNumber);
+
+        res.status(200).json({
+            success: true,
+            available: !exists
+        });
+    } catch (error) {
+        console.error('사업자번호 중복 확인 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '사업자번호 중복 확인 중 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
+};
+

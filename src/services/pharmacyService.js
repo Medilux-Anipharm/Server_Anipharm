@@ -8,7 +8,10 @@ const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
 const geolib = require('geolib');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const db = require('../models');
+const logger = require('../utils/logger');
 
 class PharmacyService {
   constructor() {
@@ -356,6 +359,165 @@ class PharmacyService {
       console.error('평점 높은 약국 조회 오류:', error);
       throw error;
     }
+  }
+
+  /**
+   * 약국 회원가입
+   * @param {Object} pharmacyData - 약국 회원가입 데이터
+   * @param {string} pharmacyData.pharmacyEmail - 약국 이메일
+   * @param {string} pharmacyData.password - 비밀번호
+   * @param {string} pharmacyData.businessNumber - 사업자 등록번호
+   * @param {string} pharmacyData.name - 약국명
+   * @param {string} pharmacyData.phone - 전화번호
+   * @param {string} pharmacyData.address - 주소
+   * @param {number} pharmacyData.latitude - 위도
+   * @param {number} pharmacyData.longitude - 경도
+   * @returns {Promise<Object>} 생성된 약국 정보
+   */
+  async registerPharmacy(pharmacyData) {
+    try {
+      const { pharmacyEmail, password, businessNumber, name, phone, address, addressDetail, latitude, longitude, operatingHours, website } = pharmacyData;
+
+      // 이메일 중복 체크
+      const existingEmail = await this.Pharmacy.findOne({ where: { pharmacyEmail } });
+      if (existingEmail) {
+        throw new Error('이미 사용 중인 이메일입니다.');
+      }
+
+      // 사업자번호 중복 체크
+      const existingBusinessNumber = await this.Pharmacy.findOne({ where: { businessNumber } });
+      if (existingBusinessNumber) {
+        throw new Error('이미 등록된 사업자번호입니다.');
+      }
+
+      // 비밀번호 해싱
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+
+      // 약국 생성
+      const pharmacy = await this.Pharmacy.create({
+        pharmacyEmail,
+        passwordHash,
+        businessNumber,
+        name,
+        phone,
+        address,
+        addressDetail,
+        latitude,
+        longitude,
+        operatingHours,
+        website,
+        isActive: true
+      });
+
+      // 비밀번호 해시는 응답에서 제외
+      const pharmacyResponse = {
+        pharmacyId: pharmacy.pharmacyId,
+        pharmacyEmail: pharmacy.pharmacyEmail,
+        businessNumber: pharmacy.businessNumber,
+        name: pharmacy.name,
+        phone: pharmacy.phone,
+        address: pharmacy.address,
+        addressDetail: pharmacy.addressDetail,
+        latitude: pharmacy.latitude,
+        longitude: pharmacy.longitude,
+        operatingHours: pharmacy.operatingHours,
+        website: pharmacy.website,
+        isActive: pharmacy.isActive,
+        createdAt: pharmacy.createdAt
+      };
+
+      logger.info(`새 약국 가입: ${pharmacyEmail} (pharmacyId: ${pharmacy.pharmacyId})`);
+
+      return pharmacyResponse;
+    } catch (error) {
+      logger.error('약국 회원가입 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 약국 로그인
+   * @param {Object} credentials - 로그인 정보
+   * @param {string} credentials.pharmacyEmail - 약국 이메일
+   * @param {string} credentials.password - 비밀번호
+   * @returns {Promise<Object>} 토큰 및 약국 정보
+   */
+  async loginPharmacy(credentials) {
+    try {
+      const { pharmacyEmail, password } = credentials;
+
+      // 약국 조회
+      const pharmacy = await this.Pharmacy.findOne({ where: { pharmacyEmail } });
+
+      if (!pharmacy) {
+        throw new Error('이메일 또는 비밀번호가 일치하지 않습니다.');
+      }
+
+      // 계정 활성화 상태 확인
+      if (!pharmacy.isActive) {
+        throw new Error('비활성화된 계정입니다.');
+      }
+
+      // 비밀번호 검증
+      const isPasswordValid = await bcrypt.compare(password, pharmacy.passwordHash);
+
+      if (!isPasswordValid) {
+        throw new Error('이메일 또는 비밀번호가 일치하지 않습니다.');
+      }
+
+      // JWT 토큰 생성
+      const token = jwt.sign(
+        {
+          pharmacyId: pharmacy.pharmacyId,
+          pharmacyEmail: pharmacy.pharmacyEmail,
+          type: 'pharmacy'
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' }
+      );
+
+      // 약국 정보 (비밀번호 해시 제외)
+      const pharmacyResponse = {
+        pharmacyId: pharmacy.pharmacyId,
+        pharmacyEmail: pharmacy.pharmacyEmail,
+        businessNumber: pharmacy.businessNumber,
+        name: pharmacy.name,
+        phone: pharmacy.phone,
+        address: pharmacy.address,
+        isActive: pharmacy.isActive
+      };
+
+      logger.info(`약국 로그인: ${pharmacyEmail} (pharmacyId: ${pharmacy.pharmacyId})`);
+
+      return {
+        token,
+        pharmacy: pharmacyResponse
+      };
+    } catch (error) {
+      logger.error('약국 로그인 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 약국 이메일 중복 체크
+   * @param {string} pharmacyEmail - 약국 이메일
+   * @returns {Promise<boolean>} 중복 여부
+   */
+  async checkEmailExists(pharmacyEmail) {
+    const pharmacy = await this.Pharmacy.findOne({ where: { pharmacyEmail } });
+    return !!pharmacy;
+  }
+
+  /**
+   * 사업자번호 중복 체크
+   * @param {string} businessNumber - 사업자번호
+   * @returns {Promise<boolean>} 중복 여부
+   */
+  async checkBusinessNumberExists(businessNumber) {
+    const pharmacy = await this.Pharmacy.findOne({ where: { businessNumber } });
+    return !!pharmacy;
   }
 }
 
