@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+const { User, Pharmacy } = require('../models');
 const logger = require('../utils/logger');
 
 /**
@@ -218,10 +218,98 @@ const authenticateOptional = async (req, res, next) => {
     next(); // 에러가 있어도 통과
   }
 };
+/**
+ * Pharmacy 전용 Bearer Token 인증
+ */
+const authenticatePharmacy = async (req, res, next) => {
+  try {
+    logger.info('[authenticatePharmacy] 약국 인증 시작');
+    logger.info('[authenticatePharmacy] 요청 URL:', req.originalUrl);
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    logger.info('[authenticatePharmacy] Authorization 헤더 존재:', !!authHeader);
+    logger.info('[authenticatePharmacy] 토큰 존재:', !!token);
+
+    if (!authHeader || !authHeader.startsWith('Bearer ') || !token) {
+      logger.error('[authenticatePharmacy] 토큰 없음 또는 형식 오류');
+      return res.status(401).json({
+        success: false,
+        message: '약국 인증 토큰이 필요합니다.'
+      });
+    }
+
+    // 토큰 검증
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key'
+    );
+
+    logger.info('[authenticatePharmacy] 토큰 디코딩 성공:', JSON.stringify(decoded));
+
+    // 타입 검증 (⭐ 핵심)
+    if (decoded.type !== 'pharmacy') {
+      logger.error('[authenticatePharmacy] 약국 토큰이 아님. type:', decoded.type);
+      return res.status(403).json({
+        success: false,
+        message: '약국 전용 토큰이 아닙니다.'
+      });
+    }
+
+    // 약국 조회
+    logger.info('[authenticatePharmacy] 약국 조회 시작. pharmacyId:', decoded.pharmacyId);
+    const pharmacy = await Pharmacy.findByPk(decoded.pharmacyId);
+
+    if (!pharmacy) {
+      logger.error('[authenticatePharmacy] 약국을 찾을 수 없음. pharmacyId:', decoded.pharmacyId);
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않은 약국 토큰입니다.'
+      });
+    }
+
+    logger.info('[authenticatePharmacy] 약국 찾음:', pharmacy.name);
+
+    if (!pharmacy.isActive) {
+      logger.error('[authenticatePharmacy] 비활성화된 약국:', pharmacy.pharmacyId);
+      return res.status(403).json({
+        success: false,
+        message: '비활성화된 약국 계정입니다.'
+      });
+    }
+
+    // req.pharmacy에 주입
+    req.pharmacy = {
+      pharmacyId: pharmacy.pharmacyId,
+      name: pharmacy.name
+    };
+
+    logger.info('[authenticatePharmacy] 인증 성공. req.pharmacy:', JSON.stringify(req.pharmacy));
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      logger.error('[authenticatePharmacy] 토큰 만료됨');
+      return res.status(401).json({
+        success: false,
+        message: '토큰이 만료되었습니다.'
+      });
+    }
+
+    logger.error('[authenticatePharmacy] 인증 실패:', error.message);
+    logger.error('[authenticatePharmacy] 에러 스택:', error.stack);
+    return res.status(401).json({
+      success: false,
+      message: '약국 인증에 실패했습니다.'
+    });
+  }
+};
 
 module.exports = {
   authenticate,
   authenticateToken,
   authenticateBasic,
-  authenticateOptional
+  authenticateOptional,
+  authenticatePharmacy,
 };
+

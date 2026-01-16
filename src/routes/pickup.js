@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const pickupController = require('../controllers/pickupController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authenticatePharmacy } = require('../middleware/auth');
 
 // ==========================================
 // 고객용 엔드포인트
@@ -51,7 +51,7 @@ router.put('/:pickupId/cancel', authenticate, pickupController.cancelPickupReque
  */
 router.get(
   '/pharmacy/requests',
-  authenticate,
+  authenticatePharmacy,
   pickupController.getPharmacyPickupRequests
 );
 
@@ -62,7 +62,7 @@ router.get(
  */
 router.get(
   '/pharmacy/stats',
-  authenticate,
+  authenticatePharmacy,
   pickupController.getPharmacyStats
 );
 
@@ -86,7 +86,7 @@ router.get(
  */
 router.put(
   '/pharmacy/:pickupId/status',
-  authenticate,
+  authenticatePharmacy,
   pickupController.updatePickupStatus
 );
 
@@ -97,7 +97,7 @@ router.put(
  */
 router.put(
   '/pharmacy/:pickupId/complete',
-  authenticate,
+  authenticatePharmacy,
   pickupController.completePickup
 );
 
@@ -108,7 +108,7 @@ router.put(
  */
 router.put(
   '/pharmacy/:pickupId/cancel',
-  authenticate,
+  authenticatePharmacy,
   pickupController.cancelPickupByPharmacy
 );
 

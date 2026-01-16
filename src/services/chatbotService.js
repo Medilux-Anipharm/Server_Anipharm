@@ -10,6 +10,10 @@ class ChatbotService {
     this.apiKey = process.env.OPENAI_API_KEY;
     this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
     this.client = null; // 지연 초기화
+    
+    // 디버깅: 환경 변수 확인
+    console.log('[ChatbotService] OpenAI API Key 설정 확인:', this.apiKey ? `설정됨 (길이: ${this.apiKey.length})` : '설정되지 않음');
+    console.log('[ChatbotService] OpenAI Model:', this.model);
   }
 
 //   /**
@@ -18,11 +22,20 @@ class ChatbotService {
 //    */
   _getClient() {
     if (!this.client) {
-      if (!this.apiKey) {
+      // 환경 변수 재확인 (런타임에 다시 읽기)
+      const runtimeApiKey = process.env.OPENAI_API_KEY;
+      
+      if (!this.apiKey && !runtimeApiKey) {
+        console.error('[ChatbotService] OPENAI_API_KEY가 설정되지 않았습니다.');
+        console.error('[ChatbotService] 현재 process.env.OPENAI_API_KEY:', runtimeApiKey);
+        console.error('[ChatbotService] 현재 this.apiKey:', this.apiKey);
         throw new Error('OPENAI_API_KEY 환경 변수가 설정되지 않았습니다. 환경 변수 OPENAI_API_KEY를 확인해주세요.');
       }
+      
+      // 런타임에 읽은 값이 있으면 사용
+      const finalApiKey = runtimeApiKey || this.apiKey;
       this.client = new OpenAI({
-        apiKey: this.apiKey,
+        apiKey: finalApiKey,
       });
     }
     return this.client;

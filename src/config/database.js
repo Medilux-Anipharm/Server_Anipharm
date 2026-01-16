@@ -1,5 +1,8 @@
 const { Sequelize } = require('sequelize');
-require('dotenv').config();
+const path = require('path');
+
+// .env 파일 경로 명시적으로 지정
+require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'anipharm_db',

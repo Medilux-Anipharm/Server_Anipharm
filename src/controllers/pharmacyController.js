@@ -340,3 +340,31 @@ exports.checkBusinessNumber = async (req, res) => {
     }
 };
 
+/**
+ * 약국 로그아웃
+ */
+exports.logoutPharmacy = async (req, res) => {
+    try {
+        // 약국 인증 미들웨어를 통해 req.pharmacy에 약국 정보가 있음
+        const pharmacyId = req.pharmacy?.pharmacyId;
+        
+        if (pharmacyId) {
+            console.log(`약국 로그아웃: pharmacyId ${pharmacyId}`);
+        }
+
+        // 로그아웃은 클라이언트에서 토큰을 삭제하는 것으로 처리
+        // 서버에서는 성공 응답만 반환
+        res.status(200).json({
+            success: true,
+            message: '로그아웃되었습니다.'
+        });
+    } catch (error) {
+        console.error('약국 로그아웃 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '로그아웃 중 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
+};
+

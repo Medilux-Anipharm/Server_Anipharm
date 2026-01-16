@@ -4,7 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const cron = require('node-cron');
-require('dotenv').config();
+const path = require('path');
+
+// .env 파일 경로 명시적으로 지정
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const sequelize = require('./config/database');
 const logger = require('./utils/logger');
@@ -133,6 +136,12 @@ app.use((err, req, res, next) => {
 // 데이터베이스 연결 및 서버 시작
 const startServer = async () => {
   try {
+    // 환경 변수 확인 (디버깅용)
+    logger.info('환경 변수 확인:');
+    logger.info(`  OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? `설정됨 (길이: ${process.env.OPENAI_API_KEY.length})` : '설정되지 않음'}`);
+    logger.info(`  OPENAI_MODEL: ${process.env.OPENAI_MODEL || '기본값 사용 (gpt-4o-mini)'}`);
+    logger.info(`  NODE_ENV: ${process.env.NODE_ENV || '설정되지 않음'}`);
+    
     await sequelize.authenticate();
     logger.info('데이터베이스 연결 성공');
 

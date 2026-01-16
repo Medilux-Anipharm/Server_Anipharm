@@ -82,7 +82,7 @@ class PickupService {
         {
           model: User,
           as: 'customer',
-          attributes: ['userId', 'name', 'phone', 'email'],
+          attributes: ['userId', 'nickname', 'email'],
         },
         {
           model: Pharmacy,
@@ -148,7 +148,7 @@ class PickupService {
         {
           model: User,
           as: 'customer',
-          attributes: ['userId', 'name', 'phone', 'email'],
+          attributes: ['userId', 'nickname', 'email'],
         },
         {
           model: PickupProduct,

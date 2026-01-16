@@ -25,6 +25,9 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: anipharm-server-dev
+    # .env 파일에서 환경 변수 읽기
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       PORT: 3000
@@ -42,9 +45,9 @@ services:
       NAVER_GEOCODE_CLIENT_SECRET: ${NAVER_GEOCODE_CLIENT_SECRET:-}
       NAVER_SEARCH_CLIENT_ID: ${NAVER_SEARCH_CLIENT_ID:-${NAVER_GEOCODE_CLIENT_ID:-}}
       NAVER_SEARCH_CLIENT_SECRET: ${NAVER_SEARCH_CLIENT_SECRET:-${NAVER_GEOCODE_CLIENT_SECRET:-}}
-      # OpenAI API 인증 정보
+      # OpenAI API 인증 정보 (env_file에서 읽거나 환경 변수에서 읽기)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     ports:
       - "3000:3000"
     volumes:

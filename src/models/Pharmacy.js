@@ -87,9 +87,10 @@ module.exports = (sequelize) => {
     updatedAt: 'updated_at',
     indexes: [
       { fields: ['latitude', 'longitude'], name: 'idx_pharmacy_location' },
-      { fields: ['rating_average'] },
-      { fields: ['pharmacy_email'], name: 'idx_pharmacy_email' },
-      { fields: ['business_number'], name: 'idx_business_number' }
+      { fields: ['rating_average'] }
+      // pharmacy_email과 business_number 인덱스는 마이그레이션에서 생성
+      // { fields: ['pharmacy_email'], name: 'idx_pharmacy_email' },
+      // { fields: ['business_number'], name: 'idx_business_number' }
     ]
   });
 

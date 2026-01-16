@@ -4,7 +4,6 @@ const db = require('../models')
 const {Review, ReviewKeyword, ReviewLike, ReviewMedia,User, Pharmacy, Hospital} = db
 const {Op} = require('sequelize')
 const sequelize = require('../config/database')
-const path = require('path')
 
 class MapReviewService {
 
@@ -389,26 +388,11 @@ class MapReviewService {
             }
 
             if(mediaFiles && mediaFiles.length > 0) {
-                const mediaData = mediaFiles.map((file, index) => {
-                    // 파일 경로를 상대 경로로 변환 (/app/uploads/reviews/... -> /uploads/reviews/...)
-                    let mediaUrl = file.path || file.url;
-                    if (mediaUrl) {
-                        // /app/uploads/로 시작하면 /uploads/로 변환
-                        mediaUrl = mediaUrl.replace(/^\/app\/uploads\//, '/uploads/');
-                        // 절대 경로가 아닌 경우 /uploads/로 시작하도록 보장
-                        if (!mediaUrl.startsWith('/uploads/') && !mediaUrl.startsWith('http')) {
-                            // 파일명만 있는 경우
-                            const filename = path.basename(mediaUrl);
-                            mediaUrl = `/uploads/reviews/${filename}`;
-                        }
-                    }
-                    console.log(`[createReview] 미디어 파일 ${index + 1} - 원본: ${file.path || file.url}, 변환: ${mediaUrl}`);
-                    return {
-                        reviewId : review.reviewId,
-                        mediaUrl : mediaUrl,
-                        mediaType : file.mimetype?.startsWith('image/')? 'image' : 'video',
-                    };
-                });
+                const mediaData = mediaFiles.map((file, index) => ({
+                    reviewId : review.reviewId,
+                    mediaUrl : file.path || file.url,
+                    mediaType : file.mimetype?.startsWith('image/')? 'image' : 'video',
+                }))
                 await ReviewMedia.bulkCreate(mediaData, {transaction})
             }
 
@@ -474,26 +458,11 @@ class MapReviewService {
             }
 
             if (mediaFiles && mediaFiles.length > 0 ){
-                const mediaData = mediaFiles.map((file, index) => {
-                    // 파일 경로를 상대 경로로 변환 (/app/uploads/reviews/... -> /uploads/reviews/...)
-                    let mediaUrl = file.path || file.url;
-                    if (mediaUrl) {
-                        // /app/uploads/로 시작하면 /uploads/로 변환
-                        mediaUrl = mediaUrl.replace(/^\/app\/uploads\//, '/uploads/');
-                        // 절대 경로가 아닌 경우 /uploads/로 시작하도록 보장
-                        if (!mediaUrl.startsWith('/uploads/') && !mediaUrl.startsWith('http')) {
-                            // 파일명만 있는 경우
-                            const filename = path.basename(mediaUrl);
-                            mediaUrl = `/uploads/reviews/${filename}`;
-                        }
-                    }
-                    console.log(`[updateReview] 미디어 파일 ${index + 1} - 원본: ${file.path || file.url}, 변환: ${mediaUrl}`);
-                    return {
-                        reviewId,
-                        mediaUrl: mediaUrl,
-                        mediaType: file.mimetype?.startsWith('video/') ? 'video' : 'image',
-                    };
-                });
+                const mediaData = mediaFiles.map((file, index) => ({
+                    reviewId,
+                    mediaUrl: file.path || file.url,
+                    mediaType: file.mimetype?.startsWith('video/') ? 'video' : 'image',
+                }));
                 await ReviewMedia.bulkCreate(mediaData, { transaction });
             }
 
